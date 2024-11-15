@@ -15,7 +15,9 @@ This Python program fetches live fantasy football scores from a Sleeper league a
 2. Install the required packages:
    ```bash
    pip install -r requirements.txt
-3. sudo apt-get install -y make
+4.
+   ```bash
+    sudo apt-get install -y make
     mkdir submodules
     cd submodules
     git clone https://github.com/hzeller/rpi-rgb-led-matrix.git matrix
