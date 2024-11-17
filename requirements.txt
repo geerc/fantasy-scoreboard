@@ -1,3 +1,4 @@
 Pillow
 sleeper-api-wrapper
 requests
+RGBMatrixEmulator
