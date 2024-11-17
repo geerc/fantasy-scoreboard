@@ -1,7 +1,7 @@
 import time
 import requests
 import argparse
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageSequence
 from sleeper_wrapper import League
 import traceback
 
@@ -22,10 +22,10 @@ def main():
 
     # Import the appropriate RGBMatrix package
     if args.emulator:
-        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions, graphics
         print("Running in emulator mode.")
     else:
-        from rgbmatrix import RGBMatrix, RGBMatrixOptions
+        from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
         print("Running on physical LED board.")
 
     # Set up the LED matrix options
@@ -34,18 +34,23 @@ def main():
     options.cols = 64
     options.chain_length = 1
     options.parallel = 1
-    options.brightness = 50
-    options.disable_hardware_pulsing = True  # Disable hardware pulsing to avoid needing root permissions
+    options.brightness = 100
+    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
     matrix = RGBMatrix(options=options)
 
     # Set up Sleeper League
     league = League(SLEEPER_LEAGUE_ID)
 
     # Load a font
-    try:
-        font = ImageFont.truetype("/home/christiangeer/fantasy-scoreboard/rpi-rgb-led-matrix/fonts/4x6.bdf", 10)
-    except IOError:
-        font = ImageFont.load_default()
+    # try:
+    # Load a font
+    font = graphics.Font()
+    font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")  # Adjust font path if needed
+    # except IOError:
+    #     font = ImageFont.load_default()
+
+    # Set color
+    color = graphics.Color(255, 255, 255)
 
     def get_live_scores():
         """Fetch live scores from Sleeper."""
@@ -135,13 +140,13 @@ def main():
                 text2 = f"{team2_roster_id}: {team2_score:.1f}"
 
                 # Create an image for the matchup
-                image = Image.new("RGB", (64, 32), "black")  # 64x32 matrix
-                draw = ImageDraw.Draw(image)
-                draw.text((1, 1), text1, fill="white", font=font)
-                draw.text((1, 16), text2, fill="white", font=font)
+                # image = Image.new("RGB", (64, 32), "black")  # 64x32 matrix
+                # draw = ImageDraw.Draw(image)
+                graphics.DrawText(matrix, font, 1, 7, color, text1)
+                graphics.DrawText(matrix, font, 1, 20, color, text2)
 
                 # Display the image on the matrix
-                matrix.SetImage(image.convert("RGB"))
+                # matrix.SetImage(image.convert("RGB"))
 
                 # Wait before showing the next matchup
                 time.sleep(REFRESH_INTERVAL)
