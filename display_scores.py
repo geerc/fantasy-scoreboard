@@ -42,12 +42,12 @@ def main():
     league = League(SLEEPER_LEAGUE_ID)
 
     # Load a font
-    # try:
-    # Load a font
-    font = graphics.Font()
-    font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")  # Adjust font path if needed
-    # except IOError:
-    #     font = ImageFont.load_default()
+    try:
+        # Load a font
+        font = graphics.Font()
+        font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")  # Adjust font path if needed
+    except IOError:
+        print(f"Error loading font: {e}")
 
     # Set color
     color = graphics.Color(255, 255, 255)
