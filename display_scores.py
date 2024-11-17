@@ -1,6 +1,6 @@
 import time
 import requests
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+import argparse
 from PIL import Image, ImageDraw, ImageFont
 from sleeper_wrapper import League
 
@@ -8,74 +8,97 @@ from sleeper_wrapper import League
 SLEEPER_LEAGUE_ID = "1116769051939786752"
 REFRESH_INTERVAL = 60  # seconds
 
-# Set up the LED matrix options
-options = RGBMatrixOptions()
-options.rows = 32
-options.cols = 64
-options.chain_length = 1
-options.parallel = 1
-options.brightness = 50
-options.disable_hardware_pulsing = True  # Disable hardware pulsing to avoid needing root permissions
-matrix = RGBMatrix(options=options)
+def main():
+    # Set up command-line argument parsing
+    parser = argparse.ArgumentParser(description="Run LED board with optional emulator.")
+    parser.add_argument(
+        '--emulator',
+        type=bool,
+        default=False,
+        help="Set to True to use the RGBMatrixEmulator instead of RGBMatrix."
+    )
+    args = parser.parse_args()
 
-# Set up Sleeper League
-league = League(SLEEPER_LEAGUE_ID)
+    # Import the appropriate RGBMatrix package
+    if args.emulator:
+        from rgbmatrix_emulator import RGBMatrix, RGBMatrixOptions
+        print("Running in emulator mode.")
+    else:
+        from rgbmatrix import RGBMatrix, RGBMatrixOptions
+        print("Running on physical LED board.")
 
-# Load a font
-try:
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 10)
-except IOError:
-    font = ImageFont.load_default()
+    # Set up the LED matrix options
+    options = RGBMatrixOptions()
+    options.rows = 32
+    options.cols = 64
+    options.chain_length = 1
+    options.parallel = 1
+    options.brightness = 50
+    options.disable_hardware_pulsing = True  # Disable hardware pulsing to avoid needing root permissions
+    matrix = RGBMatrix(options=options)
 
-def get_live_scores():
-    """Fetch live scores from Sleeper."""
+    # Set up Sleeper League
+    league = League(SLEEPER_LEAGUE_ID)
+
+    # Load a font
     try:
-        matchups = league.get_matchups(9)
-        rosters = league.get_rosters()
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 10)
+    except IOError:
+        font = ImageFont.load_default()
 
-	# Log the raw response to see what's being returned
-        print(f"Matchups: {matchups}")
-        print(f"Rosters: {rosters}")
+    def get_live_scores():
+        """Fetch live scores from Sleeper."""
+        try:
+            matchups = league.get_matchups(9)
+            rosters = league.get_rosters()
 
-        if not matchups or not rosters:
-            raise ValueError("No matchups or teams found. Check your league ID and API access.")
+        # Log the raw response to see what's being returned
+            print(f"Matchups: {matchups}")
+            print(f"Rosters: {rosters}")
 
-        # Map user IDs to username
-        user_map = {str(roster["user_id"]): roster["display_name"] for roster in rosters}
+            if not matchups or not rosters:
+                raise ValueError("No matchups or teams found. Check your league ID and API access.")
 
-        # Log user_map
-        print(f"User Map: {user_map}")
+            # Map user IDs to username
+            user_map = {str(roster["user_id"]): roster["display_name"] for roster in rosters}
 
-        scores = []
-        for matchup in matchups:
-            user1 = user_map.get(matchup["roster_id_1"], "Team 1")
-            user2 = user_map.get(matchup["roster_id_2"], "Team 2")
-            score1 = matchup["points_1"]
-            score2 = matchup["points_2"]
-            scores.append(f"{user1}: {score1} vs {user2}: {score2}")
+            # Log user_map
+            print(f"User Map: {user_map}")
 
-        return scores
-    except Exception as e:
-        print(f"Error fetching scores: {e}")
-        return []
+            scores = []
+            for matchup in matchups:
+                user1 = user_map.get(matchup["roster_id_1"], "Team 1")
+                user2 = user_map.get(matchup["roster_id_2"], "Team 2")
+                score1 = matchup["points_1"]
+                score2 = matchup["points_2"]
+                scores.append(f"{user1}: {score1} vs {user2}: {score2}")
 
-def display_scores():
-    """Display live fantasy football scores on the LED matrix."""
-    while True:
-        scores = get_live_scores()
+            return scores
+        except Exception as e:
+            print(f"Error fetching scores: {e}")
+            return []
 
-        # Create an image with the scores to display on the LED matrix
-        image = Image.new("RGB", (64, 32), "black")
-        draw = ImageDraw.Draw(image)
-        y_offset = 0
+    def display_scores():
+        """Display live fantasy football scores on the LED matrix."""
+        while True:
+            scores = get_live_scores()
 
-        for score in scores:
-            draw.text((1, y_offset), score, fill="white", font=font)
-            y_offset += 12  # Move down to display the next score
+            # Create an image with the scores to display on the LED matrix
+            image = Image.new("RGB", (64, 32), "black")
+            draw = ImageDraw.Draw(image)
+            y_offset = 0
 
-        # Display the image on the matrix
-        matrix.SetImage(image.convert("RGB"))
-        time.sleep(REFRESH_INTERVAL)
+            for score in scores:
+                draw.text((1, y_offset), score, fill="white", font=font)
+                y_offset += 12  # Move down to display the next score
+
+            # Display the image on the matrix
+            matrix.SetImage(image.convert("RGB"))
+            time.sleep(REFRESH_INTERVAL)
+
+    # Start displaying scores
+    display_scores()
 
 if __name__ == "__main__":
-    display_scores()
+    main()
+
