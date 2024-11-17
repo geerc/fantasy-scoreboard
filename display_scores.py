@@ -3,10 +3,11 @@ import requests
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 from sleeper_wrapper import League
+import traceback
 
 # Replace these with your Sleeper league ID and other details
 SLEEPER_LEAGUE_ID = "1116769051939786752"
-REFRESH_INTERVAL = 60  # seconds
+REFRESH_INTERVAL = 10  # seconds
 
 def main():
     # Set up command-line argument parsing
@@ -21,7 +22,7 @@ def main():
 
     # Import the appropriate RGBMatrix package
     if args.emulator:
-        from rgbmatrix_emulator import RGBMatrix, RGBMatrixOptions
+        from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions
         print("Running in emulator mode.")
     else:
         from rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -42,14 +43,14 @@ def main():
 
     # Load a font
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 10)
+        font = ImageFont.truetype("/home/christiangeer/fantasy-scoreboard/rpi-rgb-led-matrix/fonts/4x6.bdf", 10)
     except IOError:
         font = ImageFont.load_default()
 
     def get_live_scores():
         """Fetch live scores from Sleeper."""
         try:
-            matchups = league.get_matchups(9)
+            matchups = league.get_matchups(11)
             rosters = league.get_rosters()
 
         # Log the raw response to see what's being returned
@@ -59,23 +60,60 @@ def main():
             if not matchups or not rosters:
                 raise ValueError("No matchups or teams found. Check your league ID and API access.")
 
-            # Map user IDs to username
-            user_map = {str(roster["user_id"]): roster["display_name"] for roster in rosters}
+            # Map user IDs to roster_id
+            # user_map = {str(roster["owner_id"]): roster["roster_id"] for roster in rosters}
 
             # Log user_map
-            print(f"User Map: {user_map}")
+            # print(f"User Map: {user_map}")
 
             scores = []
-            for matchup in matchups:
-                user1 = user_map.get(matchup["roster_id_1"], "Team 1")
-                user2 = user_map.get(matchup["roster_id_2"], "Team 2")
-                score1 = matchup["points_1"]
-                score2 = matchup["points_2"]
-                scores.append(f"{user1}: {score1} vs {user2}: {score2}")
+            for team in matchups:
+                # user1 = user_map.get(matchup["roster_id"], "Team 1")
+                # user2 = user_map.get(matchup["roster_id"], "Team 2")
+
+                if team:
+                    user1_roster_id = team["roster_id"]
+
+                    # Find the opponent in the same matchup_id
+                    user2_roster_id = next(
+                        (t["roster_id"] for t in matchups if
+                         t["matchup_id"] == team["matchup_id"] and t["roster_id"] != user1_roster_id),
+                        None
+                    )
+
+                    print(f"User 1 Roster ID: {user1_roster_id}, User 2 Roster ID: {user2_roster_id}")
+
+                    # # Retrieve owner IDs from roster_ids IDs using user_map
+                    # user1 = user_map.get(user1_roster_id, "Unknown Team 1")
+                    # user2 = user_map.get(user2_roster_id, "Unknown Team 2")
+
+                    user1_score = team["points"]
+
+                    # Find the opponent in the same matchup_id
+                    user2_score = next(
+                        (t["points"] for t in matchups if
+                         t["matchup_id"] == team["matchup_id"] and t["points"] != user1_score),
+                        None
+                    )
+
+                    print(f"{user1_roster_id}: {user1_score}, {user2_roster_id}: {user2_score}")
+
+                else:
+                    print("Matchup not found.")
+
+                scores.append([[user1_roster_id, user1_score], [user2_roster_id, user2_score]])
+                print(f"scores: {scores}")
 
             return scores
         except Exception as e:
-            print(f"Error fetching scores: {e}")
+            # Get the traceback information
+            tb = traceback.extract_tb(e.__traceback__)
+
+            # Extract the line number and filename from the last frame
+            line_number = tb[-1].lineno
+            filename = tb[-1].filename
+
+            print(f"Error fetching scores on line {line_number} in {filename}: {e} ")
             return []
 
     def display_scores():
@@ -83,18 +121,30 @@ def main():
         while True:
             scores = get_live_scores()
 
-            # Create an image with the scores to display on the LED matrix
-            image = Image.new("RGB", (64, 32), "black")
-            draw = ImageDraw.Draw(image)
-            y_offset = 0
+            for matchup in scores:
+                # Extract teams and their scores
+                team1_roster_id, team1_score = matchup[0]
+                team2_roster_id, team2_score = matchup[1]
 
-            for score in scores:
-                draw.text((1, y_offset), score, fill="white", font=font)
-                y_offset += 12  # Move down to display the next score
+                # Map roster IDs to user/team names
+                # team1_name = user_map.get(roster_to_owner.get(team1_roster_id, None), f"Team {team1_roster_id}")
+                # team2_name = user_map.get(roster_to_owner.get(team2_roster_id, None), f"Team {team2_roster_id}")
 
-            # Display the image on the matrix
-            matrix.SetImage(image.convert("RGB"))
-            time.sleep(REFRESH_INTERVAL)
+                # Format text for display
+                text1 = f"{team1_roster_id}: {team1_score:.1f}"
+                text2 = f"{team2_roster_id}: {team2_score:.1f}"
+
+                # Create an image for the matchup
+                image = Image.new("RGB", (64, 32), "black")  # 64x32 matrix
+                draw = ImageDraw.Draw(image)
+                draw.text((1, 1), text1, fill="white", font=font)
+                draw.text((1, 16), text2, fill="white", font=font)
+
+                # Display the image on the matrix
+                matrix.SetImage(image.convert("RGB"))
+
+                # Wait before showing the next matchup
+                time.sleep(REFRESH_INTERVAL)
 
     # Start displaying scores
     display_scores()
