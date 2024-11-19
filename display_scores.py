@@ -32,10 +32,11 @@ def main():
     options = RGBMatrixOptions()
     options.rows = 32
     options.cols = 64
-    options.chain_length = 1
-    options.parallel = 1
-    options.brightness = 100
-    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
+    options.brightness = 40
+    options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
+    options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
+#    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
+#    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
     matrix = RGBMatrix(options=options)
 
     # Set up Sleeper League
@@ -45,11 +46,11 @@ def main():
     try:
         # Load a font
         font = graphics.Font()
-        font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")  # Adjust font path if needed
+        font.LoadFont("rpi-rgb-led-matrix/fonts/7x13B.bdf")  # Adjust font path if needed
     except IOError:
         print(f"Error loading font: {e}")
 
-    # Set color
+    # Set color to white
     color = graphics.Color(255, 255, 255)
 
     def get_live_scores():
@@ -58,9 +59,9 @@ def main():
             matchups = league.get_matchups(11)
             rosters = league.get_rosters()
 
-        # Log the raw response to see what's being returned
-            print(f"Matchups: {matchups}")
-            print(f"Rosters: {rosters}")
+            # Log the raw response to see what's being returned
+            #print(f"Matchups: {matchups}")
+            #print(f"Rosters: {rosters}")
 
             if not matchups or not rosters:
                 raise ValueError("No matchups or teams found. Check your league ID and API access.")
@@ -86,7 +87,7 @@ def main():
                         None
                     )
 
-                    print(f"User 1 Roster ID: {user1_roster_id}, User 2 Roster ID: {user2_roster_id}")
+                    print(f"roster ID {user1_roster_id} VS roster ID {user2_roster_id}")
 
                     # # Retrieve owner IDs from roster_ids IDs using user_map
                     # user1 = user_map.get(user1_roster_id, "Unknown Team 1")
@@ -101,13 +102,13 @@ def main():
                         None
                     )
 
-                    print(f"{user1_roster_id}: {user1_score}, {user2_roster_id}: {user2_score}")
+                #    print(f"{user1_roster_id}: {user1_score}, {user2_roster_id}: {user2_score}")
 
                 else:
                     print("Matchup not found.")
 
                 scores.append([[user1_roster_id, user1_score], [user2_roster_id, user2_score]])
-                print(f"scores: {scores}")
+               # print(f"scores: {scores}")
 
             return scores
         except Exception as e:
@@ -123,37 +124,45 @@ def main():
 
     def display_scores():
         """Display live fantasy football scores on the LED matrix."""
-        while True:
-            scores = get_live_scores()
+        try:
+            print("Press CTRL-C to stop.")
 
-            for matchup in scores:
-                # Extract teams and their scores
-                team1_roster_id, team1_score = matchup[0]
-                team2_roster_id, team2_score = matchup[1]
+            while True:
+                scores = get_live_scores()
 
-                # Map roster IDs to user/team names
-                # team1_name = user_map.get(roster_to_owner.get(team1_roster_id, None), f"Team {team1_roster_id}")
-                # team2_name = user_map.get(roster_to_owner.get(team2_roster_id, None), f"Team {team2_roster_id}")
+                for matchup in scores:
+                    # Extract teams and their scores
+                    team1_roster_id, team1_score = matchup[0]
+                    team2_roster_id, team2_score = matchup[1]
 
-                # Format text for display
-                text1 = f"{team1_roster_id}: {team1_score:.1f}"
-                text2 = f"{team2_roster_id}: {team2_score:.1f}"
+                    # Map roster IDs to user/team names
+                    # team1_name = user_map.get(roster_to_owner.get(team1_roster_id, None), f"Team {team1_roster_id}")
+                    # team2_name = user_map.get(roster_to_owner.get(team2_roster_id, None), f"Team {team2_roster_id}")
 
-                # Create an image for the matchup
-                # image = Image.new("RGB", (64, 32), "black")  # 64x32 matrix
-                # draw = ImageDraw.Draw(image)
-                graphics.DrawText(matrix, font, 1, 7, color, text1)
-                graphics.DrawText(matrix, font, 1, 20, color, text2)
+                    # Format text for display
+                    text1 = f"{team1_roster_id}: {team1_score:.1f}"
+                    text2 = f"{team2_roster_id}: {team2_score:.1f}"
 
-                # Display the image on the matrix
-                # matrix.SetImage(image.convert("RGB"))
+                    print(text1, "\n", text2)
+                    matrix.Clear()
 
-                # Wait before showing the next matchup
-                time.sleep(REFRESH_INTERVAL)
+                    # Create an image for the matchup
+                    # image = Image.new("RGB", (64, 32), "black")  # 64x32 matrix
+                    # draw = ImageDraw.Draw(image)
+                    graphics.DrawText(matrix, font, 1, 15, color, text1)
+                    graphics.DrawText(matrix, font, 1, 30, color, text2)
+
+                    # Display the image on the matrix
+                    # matrix.SetImage(image.convert("RGB"))
+
+                    # Wait before showing the next matchup
+                    time.sleep(REFRESH_INTERVAL)
+
+        except KeyboardInterrupt:
+            sys.exit(0)
 
     # Start displaying scores
     display_scores()
 
 if __name__ == "__main__":
     main()
-
