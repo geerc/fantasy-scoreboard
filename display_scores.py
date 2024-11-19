@@ -24,20 +24,30 @@ def main():
     if args.emulator:
         from RGBMatrixEmulator import RGBMatrix, RGBMatrixOptions, graphics
         print("Running in emulator mode.")
+
+        # Set up the LED matrix options
+        options = RGBMatrixOptions()
+        options.rows = 32
+        options.cols = 64
+        options.brightness = 100
+        #    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
+        #    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
+        matrix = RGBMatrix(options=options)
+
     else:
         from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
         print("Running on physical LED board.")
 
-    # Set up the LED matrix options
-    options = RGBMatrixOptions()
-    options.rows = 32
-    options.cols = 64
-    options.brightness = 40
-    options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
-    options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
-#    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
-#    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
-    matrix = RGBMatrix(options=options)
+        # Set up the LED matrix options
+        options = RGBMatrixOptions()
+        options.rows = 32
+        options.cols = 64
+        options.brightness = 40
+        options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
+        options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
+        #    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
+        #    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
+        matrix = RGBMatrix(options=options)
 
     # Set up Sleeper League
     league = League(SLEEPER_LEAGUE_ID)
@@ -45,13 +55,19 @@ def main():
     # Load a font
     try:
         # Load a font
-        font = graphics.Font()
-        font.LoadFont("rpi-rgb-led-matrix/fonts/4x6.bdf")  # Adjust font path if needed
+        text_font = graphics.Font()
+        text_font.LoadFont("rpi-rgb-led-matrix/fonts/4x6.bdf")  # Adjust font path if needed
+
+        score_font = graphics.Font()
+        score_font.LoadFont("rpi-rgb-led-matrix/fonts/6x9.bdf")
     except IOError:
         print(f"Error loading font: {e}")
 
     # Set color to white
-    color = graphics.Color(255, 255, 255)
+    white = graphics.Color(255, 255, 255)
+    red = graphics.Color(255, 0, 0)
+    green = graphics.Color(0, 255, 0)
+
 
     # pull weekly matchups
     matchups = league.get_matchups(11)
@@ -216,13 +232,21 @@ def main():
                     matrix.Clear()
 
                     # Draw text for both teams
-                    graphics.DrawText(matrix, font, 1, 6, color, team_name1)
-                    graphics.DrawText(matrix, font, 1, 12, color, record1)
-                    graphics.DrawText(matrix, font, 40, 12, color, score1)
+                    graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
+                    graphics.DrawText(matrix, text_font, 1, 12, white, record1)
 
-                    graphics.DrawText(matrix, font, 1, 31, color, team_name2)
-                    graphics.DrawText(matrix, font, 1, 25, color, record2)
-                    graphics.DrawText(matrix, font, 40, 25, color, score2)
+                    graphics.DrawText(matrix, text_font, 1, 31, white, record2)
+                    graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
+
+                    if score1 > score2:
+                        graphics.DrawText(matrix, score_font, 28, 15, green, score1)
+                        graphics.DrawText(matrix, score_font, 28, 31, red, score2)
+                    elif score2 > score1:
+                        graphics.DrawText(matrix, score_font, 28, 15, red, score1)
+                        graphics.DrawText(matrix, score_font, 28, 31, green, score2)
+                    else:
+                        graphics.DrawText(matrix, score_font, 28, 15, white, score1)
+                        graphics.DrawText(matrix, score_font, 28, 31, white, score2)
 
                     # Wait before showing the next matchup
                     time.sleep(REFRESH_INTERVAL)
