@@ -238,10 +238,10 @@ def main():
                     graphics.DrawText(matrix, text_font, 1, 31, white, record2)
                     graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
 
-                    if score1 > score2:
+                    if team1['points'] > team2['points']:
                         graphics.DrawText(matrix, score_font, 28, 15, green, score1)
                         graphics.DrawText(matrix, score_font, 28, 31, red, score2)
-                    elif score2 > score1:
+                    elif team2['points'] > team1['points']:
                         graphics.DrawText(matrix, score_font, 28, 15, red, score1)
                         graphics.DrawText(matrix, score_font, 28, 31, green, score2)
                     else:
