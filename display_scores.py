@@ -86,7 +86,7 @@ def main():
         rosters = league.get_rosters()  # List of rosters with 'owner_id', 'roster_id', 'wins', 'losses', 'ties'
 
         # Create the 'logos' directory in the current working directory
-        # logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
+        logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
         # os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
 
         # download user avatars
