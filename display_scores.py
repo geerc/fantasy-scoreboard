@@ -68,79 +68,8 @@ def main():
     red = graphics.Color(255, 0, 0)
     green = graphics.Color(0, 255, 0)
 
-
     # pull weekly matchups
     matchups = league.get_matchups(11)
-
-    def get_live_scores():
-        """Fetch live scores from Sleeper."""
-        try:
-            matchups = league.get_matchups(11)
-            rosters = league.get_rosters()
-
-            # Log the raw response to see what's being returned
-            #print(f"Matchups: {matchups}")
-            #print(f"Rosters: {rosters}")
-
-            if not matchups or not rosters:
-                raise ValueError("No matchups or teams found. Check your league ID and API access.")
-
-            # Map user IDs to roster_id
-            # user_map = {str(roster["owner_id"]): roster["roster_id"] for roster in rosters}
-
-            # Log user_map
-            # print(f"User Map: {user_map}")
-
-            scores = []
-            for team in matchups:
-                # user1 = user_map.get(matchup["roster_id"], "Team 1")
-                # user2 = user_map.get(matchup["roster_id"], "Team 2")
-
-                if team:
-                    user1_roster_id = team["roster_id"]
-
-                    # Find the opponent in the same matchup_id
-                    user2_roster_id = next(
-                        (t["roster_id"] for t in matchups if
-                         t["matchup_id"] == team["matchup_id"] and t["roster_id"] != user1_roster_id),
-                        None
-                    )
-
-                    print(f"roster ID {user1_roster_id} VS roster ID {user2_roster_id}")
-
-                    # # Retrieve owner IDs from roster_ids IDs using user_map
-                    # user1 = user_map.get(user1_roster_id, "Unknown Team 1")
-                    # user2 = user_map.get(user2_roster_id, "Unknown Team 2")
-
-                    user1_score = team["points"]
-
-                    # Find the opponent in the same matchup_id
-                    user2_score = next(
-                        (t["points"] for t in matchups if
-                         t["matchup_id"] == team["matchup_id"] and t["points"] != user1_score),
-                        None
-                    )
-
-                #    print(f"{user1_roster_id}: {user1_score}, {user2_roster_id}: {user2_score}")
-
-                else:
-                    print("Matchup not found.")
-
-                scores.append([[user1_roster_id, user1_score], [user2_roster_id, user2_score]])
-               # print(f"scores: {scores}")
-
-            return scores
-
-        except Exception as e:
-            # Get the traceback information
-            tb = traceback.extract_tb(e.__traceback__)
-
-            # Extract the line number and filename from the last frame
-            line_number = tb[-1].lineno
-            filename = tb[-1].filename
-
-            print(f"Error fetching scores on line {line_number} in {filename}: {e} ")
-            return []
 
     def get_team_data(league, matchups):
         """Retrieve detailed team data for each matchup."""
@@ -212,7 +141,6 @@ def main():
             print("Press CTRL-C to stop.")
 
             while True:
-                scores = get_live_scores()
                 detailed_matchups = get_team_data(league, matchups)
 
                 for matchup in detailed_matchups:
