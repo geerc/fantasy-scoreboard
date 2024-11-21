@@ -4,6 +4,7 @@ import argparse
 from PIL import Image, ImageSequence
 from sleeper_wrapper import League
 import traceback
+import os
 
 # Replace these with your Sleeper league ID and other details
 SLEEPER_LEAGUE_ID = "1116769051939786752"
@@ -34,6 +35,10 @@ def main():
         #    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
         matrix = RGBMatrix(options=options)
 
+        # Create the graphics canvas
+        canvas = matrix.CreateFrameCanvas()
+
+
     else:
         from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
         print("Running on physical LED board.")
@@ -47,7 +52,11 @@ def main():
         options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
         #    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
         #    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
+
         matrix = RGBMatrix(options=options)
+
+        # Create the graphics canvas
+        canvas = matrix.CreateFrameCanvas()
 
     # Set up Sleeper League
     league = League(SLEEPER_LEAGUE_ID)
@@ -76,6 +85,29 @@ def main():
         users = league.get_users()  # List of users with 'user_id' and 'display_name'
         rosters = league.get_rosters()  # List of rosters with 'owner_id', 'roster_id', 'wins', 'losses', 'ties'
 
+        # Create the 'logos' directory in the current working directory
+        logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
+        os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
+
+        # download user avatars
+        for user in users:
+            logo_url = user['metadata'].get("avatar")
+            if logo_url:
+                try:
+                    # Fetch the image data
+                    response = requests.get(logo_url)
+                    response.raise_for_status()  # Raise exception for HTTP errors
+
+                    # Save the image to the 'logos' directory
+                    file_path = os.path.join(logos_dir, f"{user['user_id']}.png")
+                    with open(file_path, "wb") as logo_file:
+                        logo_file.write(response.content)
+                    print(f"Downloaded logo for user {user['user_id']} to {file_path}")
+                except Exception as e:
+                    print(f"Failed to download logo for user {user['user_id']}: {e}")
+            else:
+                print(f"No avatar URL found for user {user['user_id']}")
+
         # Create a map for user_id to team_name (fallback to display_name if team_name is not set)
         user_map = {
             user["user_id"]: user["metadata"].get("team_name", user["display_name"])
@@ -89,6 +121,7 @@ def main():
                 'wins': roster['settings']['wins'],
                 'losses': roster['settings']['losses'],
                 'ties': roster['settings']['ties'],
+                'owner_id': roster['owner_id'],
             }
             for roster in rosters
         }
@@ -114,6 +147,17 @@ def main():
             team1_details = roster_map[team1["roster_id"]]
             team2_details = roster_map[team2["roster_id"]]
 
+            # Determine logo file names using owner_id
+            team1_logo = f"{team1_details['owner_id']}.png"
+            team2_logo = f"{team2_details['owner_id']}.png"
+
+            # Check if the logo files exist
+            team1_logo_path = os.path.join(logos_dir, team1_logo)
+            team2_logo_path = os.path.join(logos_dir, team2_logo)
+
+            team1_logo_file = team1_logo_path if os.path.exists(team1_logo_path) else os.path.join(logos_dir, 'default.jpg')
+            team2_logo_file = team2_logo_path if os.path.exists(team2_logo_path) else os.path.join(logos_dir, 'default.jpg')
+
             print('team1_details:\n', team1_details)
 
             detailed_matchups.append({
@@ -122,18 +166,46 @@ def main():
                     "wins": team1_details["wins"],
                     "losses": team1_details["losses"],
                     "ties": team1_details["ties"],
-                    "points": team1["points"]
+                    "points": team1["points"],
+                    "logo": team1_logo_file
                 },
                 "team2": {
                     "name": team2_details["team_name"],
                     "wins": team2_details["wins"],
                     "losses": team2_details["losses"],
                     "ties": team2_details["ties"],
-                    "points": team2["points"]
+                    "points": team2["points"],
+                    "logo": team2_logo_file
                 }
             })
 
         return detailed_matchups
+
+    import time
+
+    def scroll_text(text, font, pos_x, pos_y, canvas, matrix):
+        canvas.Clear()
+        # Start at position 15 and scroll to 64
+        start_position = 15
+        end_position = 64
+        text_width = graphics.DrawText(canvas, font, 0, 0, white, text)
+
+        if text_width <= (end_position - start_position):
+            # No need to scroll if the text is small enough to fit within the bounds
+            graphics.DrawText(matrix, font, pos_x, pos_y, white, text)
+            return
+
+        # Scroll text across the screen
+        for position in range(start_position, end_position - text_width + 1):
+            canvas.Clear()  # Clear the matrix before drawing
+            graphics.DrawText(canvas, font, position, 32, white, text)
+            time.sleep(0.1)  # Adjust this value to control scrolling speed
+
+        # Once the text reaches the end, we will wrap it around to the start again
+        for position in range(0, text_width + 1):
+            canvas.Clear()  # Clear the matrix before drawing
+            graphics.DrawText(canvas, font, position, 32, white, text)
+            time.sleep(0.1)  # Adjust this value to control scrolling speed
 
     def display_scores(matchups):
         """Display live fantasy football scores on the LED matrix."""
@@ -156,15 +228,35 @@ def main():
                     score1 = f"{team1['points']}"
                     score2 = f"{team2['points']}"
 
+                    logo1 = ""
+                    logo2 = ""
+
+                    if team1['logo'] is not None:
+                        logo1 = Image.open(team1['logo'])
+                        logo1 = logo1.resize((13, 13))
+                    if team2['logo'] is not None:
+                        logo2 = Image.open(team2['logo'])
+                        logo2 = logo2.resize((13, 13))
+
                     # Clear the screen
                     matrix.Clear()
 
-                    # Draw text for both teams
-                    graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
-                    graphics.DrawText(matrix, text_font, 1, 12, white, record1)
+                    # Draw team name and record for both teams
+                    # graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
+                    scroll_text(team_name1, text_font, 10, 1,canvas, matrix)
 
-                    graphics.DrawText(matrix, text_font, 1, 31, white, record2)
-                    graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
+                    # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
+
+                    # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
+                    scroll_text(team_name1, text_font, 10, 22, canvas, matrix)
+                    # graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
+
+                    # Draw team logo for both teams
+                    if logo1:
+                        matrix.SetImage(logo1.convert('RGB'), 1, 1)
+                    if logo2:
+                        matrix.SetImage(logo2.convert('RGB'), 1, 18)
+
 
                     if team1['points'] > team2['points']:
                         graphics.DrawText(matrix, score_font, 28, 15, green, score1)
