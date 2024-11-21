@@ -181,32 +181,6 @@ def main():
 
         return detailed_matchups
 
-    import time
-
-    def scroll_text(text, font, pos_x, pos_y, canvas, matrix):
-        canvas.Clear()
-        # Start at position 15 and scroll to 64
-        start_position = 15
-        end_position = 64
-        text_width = graphics.DrawText(canvas, font, 0, 0, white, text)
-
-        if text_width <= (end_position - start_position):
-            # No need to scroll if the text is small enough to fit within the bounds
-            graphics.DrawText(matrix, font, pos_x, pos_y, white, text)
-            return
-
-        # Scroll text across the screen
-        for position in range(start_position, end_position - text_width + 1):
-            canvas.Clear()  # Clear the matrix before drawing
-            graphics.DrawText(canvas, font, position, 32, white, text)
-            time.sleep(0.1)  # Adjust this value to control scrolling speed
-
-        # Once the text reaches the end, we will wrap it around to the start again
-        for position in range(0, text_width + 1):
-            canvas.Clear()  # Clear the matrix before drawing
-            graphics.DrawText(canvas, font, position, 32, white, text)
-            time.sleep(0.1)  # Adjust this value to control scrolling speed
-
     def display_scores(matchups):
         """Display live fantasy football scores on the LED matrix."""
         try:
@@ -243,12 +217,9 @@ def main():
 
                     # Draw team name and record for both teams
                     # graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
-                    scroll_text(team_name1, text_font, 10, 1,canvas, matrix)
-
                     # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
 
                     # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
-                    scroll_text(team_name1, text_font, 10, 22, canvas, matrix)
                     # graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
 
                     # Draw team logo for both teams
@@ -259,14 +230,14 @@ def main():
 
 
                     if team1['points'] > team2['points']:
-                        graphics.DrawText(matrix, score_font, 28, 15, green, score1)
-                        graphics.DrawText(matrix, score_font, 28, 31, red, score2)
+                        graphics.DrawText(matrix, score_font, 28, 10, green, score1)
+                        graphics.DrawText(matrix, score_font, 28, 27, red, score2)
                     elif team2['points'] > team1['points']:
-                        graphics.DrawText(matrix, score_font, 28, 15, red, score1)
-                        graphics.DrawText(matrix, score_font, 28, 31, green, score2)
+                        graphics.DrawText(matrix, score_font, 28, 10, red, score1)
+                        graphics.DrawText(matrix, score_font, 28, 27, green, score2)
                     else:
-                        graphics.DrawText(matrix, score_font, 28, 15, white, score1)
-                        graphics.DrawText(matrix, score_font, 28, 31, white, score2)
+                        graphics.DrawText(matrix, score_font, 28, 10, white, score1)
+                        graphics.DrawText(matrix, score_font, 28, 27, white, score2)
 
                     # Wait before showing the next matchup
                     time.sleep(REFRESH_INTERVAL)
