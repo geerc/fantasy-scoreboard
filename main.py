@@ -206,11 +206,14 @@ def main():
 
         # Draw vertical lines for team 1
         for xi in range(0, 15):  # Slightly before the text start
-            graphics.DrawLine(canvas, xi, 6, xi, 6 - text_height, bg_color)  # Adjust vertical bounds as needed
+            graphics.DrawLine(canvas, xi, 1, xi, 32, bg_color)  # Adjust vertical bounds as needed
 
-        # For team 2
-        for xi in range(0, 15):  # Slightly before the text start
-            graphics.DrawLine(canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
+        # # For team 2
+        # for xi in range(0, 15):  # Slightly before the text start
+        #     graphics.DrawLine(canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
+
+        # clear text between logo and text area
+        # graphics.DrawLine(canvas, 1, 1, 1,32, bg_color)  # Adjust vertical bounds as needed
 
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
