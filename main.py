@@ -1,4 +1,6 @@
 import time
+from turtledemo.penrose import start
+
 import requests
 import argparse
 from PIL import Image, ImageSequence
@@ -51,7 +53,7 @@ def main():
         options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
         options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
         #    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
-        options.pwm_lsb_nanoseconds = 200  # Improve LED refresh quality
+        #    options.pwm_lsb_nanoseconds = 130  # Improve LED refresh quality
 
         matrix = RGBMatrix(options=options)
 
@@ -59,7 +61,8 @@ def main():
         canvas = matrix.CreateFrameCanvas()
 
     # Set up Sleeper League
-    league = League(SLEEPER_LEAGUE_ID)
+    my_league = League(SLEEPER_LEAGUE_ID)
+    week = 12
 
     # Load a font
     try:
@@ -72,22 +75,24 @@ def main():
     except IOError:
         print(f"Error loading font: {e}")
 
-    # Set color to white
+    # Set colors
     white = graphics.Color(255, 255, 255)
     red = graphics.Color(255, 0, 0)
     green = graphics.Color(0, 255, 0)
+    black = graphics.Color(0, 0, 0)
 
-    # pull weekly matchups
-    matchups = league.get_matchups(11)
-
-    def get_team_data(league, matchups):
+    def get_team_data(data_league, week):
         """Retrieve detailed team data for each matchup."""
-        users = league.get_users()  # List of users with 'user_id' and 'display_name'
-        rosters = league.get_rosters()  # List of rosters with 'owner_id', 'roster_id', 'wins', 'losses', 'ties'
+
+        # pull weekly matchups
+        matchups = data_league.get_matchups(week)
+
+        users = data_league.get_users()  # List of users with 'user_id' and 'display_name'
+        rosters = data_league.get_rosters()  # List of rosters with 'owner_id', 'roster_id', 'wins', 'losses', 'ties'
 
         # Create the 'logos' directory in the current working directory
         logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
-        # os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
+        os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
 
         # download user avatars
         for user in users:
@@ -108,16 +113,20 @@ def main():
             else:
                 print(f"No avatar URL found for user {user['user_id']}")
 
-        # Create a map for user_id to team_name (fallback to display_name if team_name is not set)
+        # Create a map for user_id to team_name (fallback to 'display_name' if team_name is not set)
         user_map = {
-            user["user_id"]: user["metadata"].get("team_name", user["display_name"])
+            user["user_id"]: {
+                'team_name': user['metadata'].get('team_name', user['display_name']),
+                'display_name': user['display_name'],
+            }
             for user in users
         }
 
         # Create a mapping of roster_id to team stats
         roster_map = {
             roster['roster_id']: {
-                'team_name': user_map.get(roster['owner_id'], "Unknown Team"),
+                'team_name': user_map.get(roster['owner_id'], {}).get('team_name', "Unknown Team"),
+                'display_name': user_map.get(roster['owner_id'], {}).get('display_name', "Unknown Owner"),
                 'wins': roster['settings']['wins'],
                 'losses': roster['settings']['losses'],
                 'ties': roster['settings']['ties'],
@@ -227,72 +236,173 @@ def main():
         # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
 
 
-    def display_scores(matchups):
+    def draw_logos(team1_logo_path, team2_logo_path):
+        logo1 = ""
+        logo2 = ""
+
+        if team1_logo_path is not None:
+            logo1 = Image.open(team1_logo_path)
+            logo1 = logo1.resize((13, 13))
+        if team2_logo_path is not None:
+            logo2 = Image.open(team2_logo_path)
+            logo2 = logo2.resize((13, 13))
+
+        # Draw team logo for both teams
+        if logo1:
+            matrix.SetImage(logo1.convert('RGB'), 1, 1)
+        if logo2:
+            matrix.SetImage(logo2.convert('RGB'), 1, 18)
+
+    def display_scores(display_canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
         try:
             print("Press CTRL-C to stop.")
 
+            display_week = 11
+
+            # Initial data fetch and processing
+            matchup_data = get_team_data(display_league, display_week)
+
+            # Initialize position of the text
+            pos_1 = 15
+            pos_2 = 15
+
+            print(f'Data: {matchup_data}')
+            print('Matchups')
+            for matchup in matchup_data:
+                print(matchup)
+
+            # Create a list of screens dynamically based on the provided data
+            screens = [
+                (team1_key, team1_data, team2_key, team2_data)
+                for matchup in matchup_data
+                for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
+            ]
+
+            # Initialize screen index
+            current_screen_index = 0
+
+            # Rotation interval between screens in seconds
+            rotation_interval = 30
+
+            # Time tracking
+            last_switch_time = time.time()
+            data_refresh_interval = 60
+            last_refresh_time = time.time()
+
             while True:
-                detailed_matchups = get_team_data(league, matchups)
+                # while True:
+                #     detailed_matchups = get_team_data(league, matchups)
+                #
+                #     for matchup in detailed_matchups:
+                #         team1 = matchup["team1"]  # Access 'team1' key from the matchup dictionary
+                #         team2 = matchup["team2"]  # Access 'team2' key from the matchup dictionary
+                #
+                #         team_name1 = f"{team1['name']}"
+                #         team_name2 = f"{team2['name']}"
+                #
+                #         record1 = f"({team1['wins']}-{team1['losses']})"
+                #         record2 = f"({team2['wins']}-{team2['losses']})"
+                #
+                #         score1 = f"{team1['points']}"
+                #         score2 = f"{team2['points']}"
+                #
+                #         logo1 = ""
+                #         logo2 = ""
+                #
+                #         if team1['logo'] is not None:
+                #             logo1 = Image.open(team1['logo'])
+                #             logo1 = logo1.resize((13, 13))
+                #         if team2['logo'] is not None:
+                #             logo2 = Image.open(team2['logo'])
+                #             logo2 = logo2.resize((13, 13))
+                #
+                #         # Clear the screen
+                #         matrix.Clear()
+                #
+                #         # Draw team logo for both teams
+                #         if logo1:
+                #             matrix.SetImage(logo1.convert('RGB'), 1, 1)
+                #         if logo2:
+                #             matrix.SetImage(logo2.convert('RGB'), 1, 18)
+                #
+                #
+                #         if team1['points'] > team2['points']:
+                #             graphics.DrawText(matrix, score_font, 28, 15, green, score1)
+                #             graphics.DrawText(matrix, score_font, 28, 31, red, score2)
+                #         elif team2['points'] > team1['points']:
+                #             graphics.DrawText(matrix, score_font, 28, 15, red, score1)
+                #             graphics.DrawText(matrix, score_font, 28, 31, green, score2)
+                #         else:
+                #             graphics.DrawText(matrix, score_font, 28, 15, white, score1)
+                #             graphics.DrawText(matrix, score_font, 28, 31, white, score2)
+                #
+                #         # Draw team name and record for both teams
+                #         # graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
+                #         scroll_text(team_name1, text_font, white)
+                #
+                #         # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
+                #
+                #         # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
+                #         scroll_text(team_name2, text_font, white)
+                #         # graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
+                #
+                #         # Wait before showing the next matchup
+                #         time.sleep(REFRESH_INTERVAL)
+                current_time = time.time()
 
-                for matchup in detailed_matchups:
-                    team1 = matchup["team1"]  # Access 'team1' key from the matchup dictionary
-                    team2 = matchup["team2"]  # Access 'team2' key from the matchup dictionary
+                # Check if it's time to refresh the data and logos
+                if current_time - last_refresh_time >= data_refresh_interval:
+                    matchup_data = get_team_data(display_league, display_week)
 
-                    team_name1 = f"{team1['name']}"
-                    team_name2 = f"{team2['name']}"
+                    # Create a list of screens dynamically based on the provided data
+                    screens = [
+                        (team1_key, team1_data, team2_key, team2_data)
+                        for matchup in matchup_data
+                        for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
+                    ]
 
-                    record1 = f"({team1['wins']}-{team1['losses']})"
-                    record2 = f"({team2['wins']}-{team2['losses']})"
+                    # reset last refresh time
+                    last_refresh_time = current_time
 
-                    score1 = f"{team1['points']}"
-                    score2 = f"{team2['points']}"
+                # Check if it's time to switch the screen
+                if current_time - last_switch_time >= rotation_interval:
+                    display_canvas.Clear()
 
-                    logo1 = ""
-                    logo2 = ""
+                    current_screen_index = (current_screen_index + 1) % len(screens)
+                    last_switch_time = current_time
 
-                    if team1['logo'] is not None:
-                        logo1 = Image.open(team1['logo'])
-                        logo1 = logo1.resize((13, 13))
-                    if team2['logo'] is not None:
-                        logo2 = Image.open(team2['logo'])
-                        logo2 = logo2.resize((13, 13))
+                # Unpack current screen data
+                team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
-                    # Clear the screen
-                    matrix.Clear()
+                # Draw the current matchups's screen with the scrolling text
+                team1_width, team2_width, display_canvas = draw_matchup(display_canvas, pos_1, pos_2, team1_data, team2_data, black)
 
-                    # Draw team name and record for both teams
-                    # graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
-                    # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
+                # Scroll text to the left if text extends beyond end of screen
+                if (pos_1 + team1_width) >= display_canvas.width:
+                    pos_1 -= 1
+                    # Reset position if the text has moved completely off the left side
+                    if (pos_1 + team1_width) < display_canvas.width:
+                        # pos_1 = display_canvas.width - 1
+                        pos_1 = 15
+                if (pos_2 + team2_width) >= display_canvas.width:
+                    pos_2 -= 1
+                    # Reset position if the text has moved completely off the left side
+                    if pos_2 + team2_width < display_canvas.width:
+                        # pos_2 = display_canvas.width - 1
+                        pos_2 = 15
+                # Swap the canvas to update the display
+                display_canvas = matrix.SwapOnVSync(canvas)
 
-                    # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
-                    # graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
+                # Delay to control the speed of the scrolling
+                # time.sleep(0.01)
 
-                    # Draw team logo for both teams
-                    if logo1:
-                        matrix.SetImage(logo1.convert('RGB'), 1, 1)
-                    if logo2:
-                        matrix.SetImage(logo2.convert('RGB'), 1, 18)
-
-
-                    if team1['points'] > team2['points']:
-                        graphics.DrawText(matrix, score_font, 28, 10, green, score1)
-                        graphics.DrawText(matrix, score_font, 28, 27, red, score2)
-                    elif team2['points'] > team1['points']:
-                        graphics.DrawText(matrix, score_font, 28, 10, red, score1)
-                        graphics.DrawText(matrix, score_font, 28, 27, green, score2)
-                    else:
-                        graphics.DrawText(matrix, score_font, 28, 10, white, score1)
-                        graphics.DrawText(matrix, score_font, 28, 27, white, score2)
-
-                    # Wait before showing the next matchup
-                    time.sleep(REFRESH_INTERVAL)
 
         except KeyboardInterrupt:
             sys.exit(0)
 
     # Start displaying scores
-    display_scores(matchups)
+    display_scores(canvas, my_league)
 
 if __name__ == "__main__":
     main()
