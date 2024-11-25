@@ -189,7 +189,7 @@ def main():
         return detailed_matchups
 
     def draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
-
+        canvas.Clear()
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
