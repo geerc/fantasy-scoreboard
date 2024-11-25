@@ -222,7 +222,6 @@ def main():
 
     def draw_scores(team1_score, team2_score):
         # Draw team scores and records (static text)
-
         if team1_score > team2_score:
             graphics.DrawText(matrix, score_font, 28, 15, green, str(team1_score))
             graphics.DrawText(matrix, score_font, 28, 31, red, str(team2_score))
