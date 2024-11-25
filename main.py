@@ -379,9 +379,6 @@ def main():
                 # Draw the current matchups's screen with the scrolling text
                 team1_width, team2_width, display_canvas = draw_matchup(display_canvas, pos_1, pos_2, team1_data, team2_data, black)
 
-                print(team1_width)
-                print(pos_1+team1_width)
-
                 # Scroll text to the left if text extends beyond end of screen
                 if (pos_1 + team1_width) >= display_canvas.width:
                     pos_1 -= 1
