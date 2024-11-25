@@ -1,5 +1,4 @@
 import time
-from turtledemo.penrose import start
 
 import requests
 import argparse
