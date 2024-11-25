@@ -181,6 +181,52 @@ def main():
 
         return detailed_matchups
 
+    def draw_matchup(draw_canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
+        canvas.Clear()
+
+        # Draw team names
+        graphics.DrawText(draw_canvas, text_font, pos_1, 6, white, team1_data['name'])
+        graphics.DrawText(draw_canvas, text_font, pos_2, 23, white, team2_data['name'])
+
+        # To clear areas outside the text bounds, get text height to determine vertical line height
+        text_height = text_font.height
+
+        # Draw vertical lines for team 1
+        for xi in range(0, 15):  # Slightly before the text start
+            graphics.DrawLine(draw_canvas, xi, 6, xi, 6 - text_height, bg_color)  # Adjust vertical bounds as needed
+
+        # For team 2
+        for xi in range(0, 15):  # Slightly before the text start
+            graphics.DrawLine(draw_canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
+
+        # Draw logos
+        draw_logos(team1_data['logo'], team2_data['logo'])
+
+        # Measure the width of the team names
+        team1_width = graphics.DrawText(canvas, text_font, 0, 0, white, team1_data['name'])
+        team2_width = graphics.DrawText(canvas, text_font, 0, 0, white, team2_data['name'])
+
+        # Draw scores for both teams
+        draw_scores(team1_data['points'], team2_data['points'])
+
+        return team1_width, team2_width, draw_canvas
+
+    def draw_scores(team1_score, team2_score):
+        # Draw team scores and records (static text)
+        if team1_score > team2_score:
+            graphics.DrawText(matrix, score_font, 28, 15, green, str(team1_score))
+            graphics.DrawText(matrix, score_font, 28, 31, red, str(team2_score))
+        elif team2_score > team1_score:
+            graphics.DrawText(matrix, score_font, 28, 15, red, str(team1_score))
+            graphics.DrawText(matrix, score_font, 28, 31, green, str(team2_score))
+        else:
+            graphics.DrawText(matrix, score_font, 28, 15, white, str(team1_score))
+            graphics.DrawText(matrix, score_font, 28, 31, white, str(team2_score))
+
+        # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
+        # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
+
+
     def display_scores(matchups):
         """Display live fantasy football scores on the LED matrix."""
         try:
