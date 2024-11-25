@@ -298,64 +298,6 @@ def main():
             last_refresh_time = time.time()
 
             while True:
-                # while True:
-                #     detailed_matchups = get_team_data(league, matchups)
-                #
-                #     for matchup in detailed_matchups:
-                #         team1 = matchup["team1"]  # Access 'team1' key from the matchup dictionary
-                #         team2 = matchup["team2"]  # Access 'team2' key from the matchup dictionary
-                #
-                #         team_name1 = f"{team1['name']}"
-                #         team_name2 = f"{team2['name']}"
-                #
-                #         record1 = f"({team1['wins']}-{team1['losses']})"
-                #         record2 = f"({team2['wins']}-{team2['losses']})"
-                #
-                #         score1 = f"{team1['points']}"
-                #         score2 = f"{team2['points']}"
-                #
-                #         logo1 = ""
-                #         logo2 = ""
-                #
-                #         if team1['logo'] is not None:
-                #             logo1 = Image.open(team1['logo'])
-                #             logo1 = logo1.resize((13, 13))
-                #         if team2['logo'] is not None:
-                #             logo2 = Image.open(team2['logo'])
-                #             logo2 = logo2.resize((13, 13))
-                #
-                #         # Clear the screen
-                #         matrix.Clear()
-                #
-                #         # Draw team logo for both teams
-                #         if logo1:
-                #             matrix.SetImage(logo1.convert('RGB'), 1, 1)
-                #         if logo2:
-                #             matrix.SetImage(logo2.convert('RGB'), 1, 18)
-                #
-                #
-                #         if team1['points'] > team2['points']:
-                #             graphics.DrawText(matrix, score_font, 28, 15, green, score1)
-                #             graphics.DrawText(matrix, score_font, 28, 31, red, score2)
-                #         elif team2['points'] > team1['points']:
-                #             graphics.DrawText(matrix, score_font, 28, 15, red, score1)
-                #             graphics.DrawText(matrix, score_font, 28, 31, green, score2)
-                #         else:
-                #             graphics.DrawText(matrix, score_font, 28, 15, white, score1)
-                #             graphics.DrawText(matrix, score_font, 28, 31, white, score2)
-                #
-                #         # Draw team name and record for both teams
-                #         # graphics.DrawText(matrix, text_font, 1, 6, white, team_name1)
-                #         scroll_text(team_name1, text_font, white)
-                #
-                #         # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
-                #
-                #         # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
-                #         scroll_text(team_name2, text_font, white)
-                #         # graphics.DrawText(matrix, text_font, 1, 22, white, team_name2)
-                #
-                #         # Wait before showing the next matchup
-                #         time.sleep(REFRESH_INTERVAL)
                 current_time = time.time()
 
                 # Check if it's time to refresh the data and logos
@@ -378,6 +320,10 @@ def main():
 
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
+
+                    # reset starting text position
+                    pos_1 = 15
+                    pos_2 = 15
 
                 # Unpack current screen data
                 team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
