@@ -266,6 +266,7 @@ def main():
             print("Press CTRL-C to stop.")
 
             display_week = 11
+            starting_pos = 15
 
             # Initial data fetch and processing
             matchup_data = get_team_data(display_league, display_week)
@@ -331,24 +332,28 @@ def main():
                 # Draw the current matchups's screen with the scrolling text
                 team1_width, team2_width, canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
-                # Scroll text to the left if text extends beyond end of screen
-                if (pos_1 + team1_width) >= canvas.width:
-                    pos_1 -= 1
-                    # Reset position if the text has moved completely off the left side
-                    if (pos_1 + team1_width) < canvas.width:
-                        # pos_1 = canvas.width - 1
-                        pos_1 = 15
-                if (pos_2 + team2_width) >= canvas.width:
-                    pos_2 -= 1
-                    # Reset position if the text has moved completely off the left side
-                    if pos_2 + team2_width < canvas.width:
-                        # pos_2 = canvas.width - 1
-                        pos_2 = 15
+                # only scroll team name if it doesn't fit on the board
+                if (starting_pos + team1_width) >= 64:
+
+                    # Scroll text to the left until end is at start pos
+                    if (pos_1 + team1_width) >= 15:
+                        pos_1 -= 1
+                        # Reset position if the text has moved completely off the left side
+                        if (pos_1 + team1_width) < 15:
+                            pos_1 = 64
+
+                if (starting_pos + team2_width) >= 64:
+                    if (pos_2 + team2_width) >= 15:
+                        pos_2 -= 1
+                        # Reset position if the text has moved completely off the left side
+                        if (pos_2 + team2_width) < 15:
+                            pos_2 = 64
+
                 # Swap the canvas to update the display
                 canvas = matrix.SwapOnVSync(canvas)
 
                 # Delay to control the speed of the scrolling
-                # time.sleep(0.01)
+                time.sleep(0.05)
 
 
         except KeyboardInterrupt:
