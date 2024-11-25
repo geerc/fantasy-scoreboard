@@ -70,7 +70,7 @@ def main():
         text_font.LoadFont("rpi-rgb-led-matrix/fonts/4x6.bdf")  # Adjust font path if needed
 
         score_font = graphics.Font()
-        score_font.LoadFont("rpi-rgb-led-matrix/fonts/6x9.bdf")
+        score_font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")
     except IOError:
         print(f"Error loading font: {e}")
 
@@ -190,54 +190,26 @@ def main():
         return detailed_matchups
 
     def draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
-        # To clear areas outside the text bounds, get text height to determine vertical line height
-        text_height = text_font.height
-
-        # clear text area (14-64)
-        for xi in range(14, 65):  # Slightly before the text start
-            graphics.DrawLine(canvas, xi, 6, xi, 6 - text_height, bg_color)  # Adjust vertical bounds as needed
-        for xi in range(14, 65):  # Slightly before the text start
-            graphics.DrawLine(canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
-
-
-        # Draw team names
-        graphics.DrawText(canvas, text_font, pos_1, 6, white, team1_data['name'])
-        graphics.DrawText(canvas, text_font, pos_2, 23, white, team2_data['name'])
-
-        # Draw vertical lines for team 1
-        for xi in range(0, 15):  # Slightly before the text start
-            graphics.DrawLine(canvas, xi, 1, xi, 32, bg_color)  # Adjust vertical bounds as needed
-
-        # # For team 2
-        # for xi in range(0, 15):  # Slightly before the text start
-        #     graphics.DrawLine(canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
-
-        # clear text between logo and text area
-        # graphics.DrawLine(canvas, 1, 1, 1,32, bg_color)  # Adjust vertical bounds as needed
 
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
-        # Measure the width of the team names
-        team1_width = graphics.DrawText(canvas, text_font, 0, -10, white, team1_data['name'])
-        team2_width = graphics.DrawText(canvas, text_font, 0, -10, white, team2_data['name'])
-
         # Draw scores for both teams
         draw_scores(team1_data['points'], team2_data['points'])
 
-        return team1_width, team2_width, canvas
+        return canvas
 
     def draw_scores(team1_score, team2_score):
         # Draw team scores and records (static text)
         if team1_score > team2_score:
-            graphics.DrawText(matrix, score_font, 28, 15, green, str(team1_score))
-            graphics.DrawText(matrix, score_font, 28, 31, red, str(team2_score))
+            graphics.DrawText(matrix, score_font, 1, 31, green, str(team1_score))
+            graphics.DrawText(matrix, score_font, 35, 31, red, str(team2_score))
         elif team2_score > team1_score:
-            graphics.DrawText(matrix, score_font, 28, 15, red, str(team1_score))
-            graphics.DrawText(matrix, score_font, 28, 31, green, str(team2_score))
+            graphics.DrawText(matrix, score_font, 1, 31, red, str(team1_score))
+            graphics.DrawText(matrix, score_font, 35, 31, green, str(team2_score))
         else:
-            graphics.DrawText(matrix, score_font, 28, 15, white, str(team1_score))
-            graphics.DrawText(matrix, score_font, 28, 31, white, str(team2_score))
+            graphics.DrawText(matrix, score_font, 1, 31, white, str(team1_score))
+            graphics.DrawText(matrix, score_font, 35, 31, white, str(team2_score))
 
         # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
         # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
@@ -249,16 +221,16 @@ def main():
 
         if team1_logo_path is not None:
             logo1 = Image.open(team1_logo_path)
-            logo1 = logo1.resize((13, 13))
+            logo1 = logo1.resize((20, 20))
         if team2_logo_path is not None:
             logo2 = Image.open(team2_logo_path)
-            logo2 = logo2.resize((13, 13))
+            logo2 = logo2.resize((20, 20))
 
         # Draw team logo for both teams
         if logo1:
             matrix.SetImage(logo1.convert('RGB'), 1, 1)
         if logo2:
-            matrix.SetImage(logo2.convert('RGB'), 1, 18)
+            matrix.SetImage(logo2.convert('RGB'), 44, 1)
 
     def display_scores(canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
@@ -329,27 +301,10 @@ def main():
                 team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
                 # Draw the current matchups's screen with the scrolling text
-                team1_width, team2_width, canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
+                canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
-                # Scroll text to the left if text extends beyond end of screen
-                if (pos_1 + team1_width) >= canvas.width:
-                    pos_1 -= 1
-                    # Reset position if the text has moved completely off the left side
-                    if (pos_1 + team1_width) < canvas.width:
-                        # pos_1 = canvas.width - 1
-                        pos_1 = 15
-                if (pos_2 + team2_width) >= canvas.width:
-                    pos_2 -= 1
-                    # Reset position if the text has moved completely off the left side
-                    if pos_2 + team2_width < canvas.width:
-                        # pos_2 = canvas.width - 1
-                        pos_2 = 15
                 # Swap the canvas to update the display
                 canvas = matrix.SwapOnVSync(canvas)
-
-                # Delay to control the speed of the scrolling
-                # time.sleep(0.01)
-
 
         except KeyboardInterrupt:
             sys.exit(0)
