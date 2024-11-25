@@ -39,7 +39,6 @@ def main():
 
         # Create the graphics canvas
         canvas = matrix.CreateFrameCanvas()
-        text_canvas = matrix.CreateFrameCanvas()
 
 
     else:
@@ -63,6 +62,7 @@ def main():
 
     # Set up Sleeper League
     my_league = League(SLEEPER_LEAGUE_ID)
+    week = 12
 
     # Load a font
     try:
@@ -79,6 +79,7 @@ def main():
     white = graphics.Color(255, 255, 255)
     red = graphics.Color(255, 0, 0)
     green = graphics.Color(0, 255, 0)
+    black = graphics.Color(0, 0, 0)
 
     def get_team_data(data_league, week):
         """Retrieve detailed team data for each matchup."""
@@ -189,33 +190,23 @@ def main():
 
         return detailed_matchups
 
-    def scroll_text(text, font, color, y_position, canvas):
-        """Scroll text horizontally within a specific range."""
+    def draw_matchup(draw_canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
         canvas.Clear()
 
-        start_position = 15
-        max_width = 64  # Width of the LED matrix
-        text_width = graphics.DrawText(canvas, font, 0, 0, color, text)
+        # Draw team names
+        graphics.DrawText(draw_canvas, text_font, pos_1, 6, white, team1_data['name'])
+        graphics.DrawText(draw_canvas, text_font, pos_2, 23, white, team2_data['name'])
 
-        if text_width <= (max_width - start_position):
-            # If text fits, draw it at the start position
-            graphics.DrawText(canvas, font, start_position, y_position, color, text)
-            return
+        # To clear areas outside the text bounds, get text height to determine vertical line height
+        text_height = text_font.height
 
-        # Scroll the text
-        for x_pos in range(start_position, max_width - text_width, -1):
-            canvas.Clear()  # Clear the matrix before redrawing
-            graphics.DrawText(canvas, font, x_pos, y_position, color, text)
-            time.sleep(0.05)  # Adjust to control scroll speed
+        # Draw vertical lines for team 1
+        for xi in range(0, 15):  # Slightly before the text start
+            graphics.DrawLine(draw_canvas, xi, 6, xi, 6 - text_height, bg_color)  # Adjust vertical bounds as needed
 
-        # Wrap the text and start again
-        for x_pos in range(max_width, start_position, -1):
-            canvas.Clear()
-            graphics.DrawText(canvas, font, x_pos, y_position, color, text)
-            time.sleep(0.05)
-
-    def draw_matchup(draw_canvas, pos_1, pos_2, team1_key, team1_data, team2_key, team2_data):
-        canvas.Clear()
+        # For team 2
+        for xi in range(0, 15):  # Slightly before the text start
+            graphics.DrawLine(draw_canvas, xi, 23, xi, 23 - text_height, bg_color)  # Adjust vertical bounds as needed
 
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
@@ -224,15 +215,8 @@ def main():
         team1_width = graphics.DrawText(canvas, text_font, 0, 0, white, team1_data['name'])
         team2_width = graphics.DrawText(canvas, text_font, 0, 0, white, team2_data['name'])
 
-        # Draw team name (scrolling text) at the current position
-        graphics.DrawText(draw_canvas, text_font, pos_1, 6, white, team1_data['name'])
-        graphics.DrawText(draw_canvas, text_font, pos_2, 22, white, team2_data['name'])
-
         # Draw scores for both teams
         draw_scores(team1_data['points'], team2_data['points'])
-
-        # scroll_text(team1_data['name'], text_font, white, 6, text_canvas)
-        # scroll_text(team2_data['name'], text_font, white, 22, text_canvas)
 
         return team1_width, team2_width, draw_canvas
 
@@ -299,12 +283,8 @@ def main():
             # Initialize screen index
             current_screen_index = 0
 
-            # Initialize scroll direction as left
-            scroll_direction_1 = 'left'
-            scroll_direction_2 = 'left'
-
             # Rotation interval between screens in seconds
-            rotation_interval = 90
+            rotation_interval = 30
 
             # Time tracking
             last_switch_time = time.time()
@@ -388,70 +368,33 @@ def main():
 
                 # Check if it's time to switch the screen
                 if current_time - last_switch_time >= rotation_interval:
-                    canvas.Clear()
+                    display_canvas.Clear()
 
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
-
-                    # reset text pos
-                    pos_1 = 15
-                    pos_2 = 15
-
-                    # Get the current matchups's data
-                    # print(f'Current screen: {screens[current_screen_index]}')
-                    # current_screen = screens[current_screen_index]
-
-                    # Unpack current screen data
-                    # team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-                    #
-                    # # Draw logos and scores
-                    # draw_logos(team1_data['logo'], team2_data['logo'])
-                    #
-                    # if team1_data['points'] > team2_data['points']:
-                    #     graphics.DrawText(matrix, score_font, 28, 15, green, str(team1_data['points']))
-                    #     graphics.DrawText(matrix, score_font, 28, 31, red, str(team2_data['points']))
-                    # elif team2_data['points'] > team1_data['points']:
-                    #     graphics.DrawText(matrix, score_font, 28, 15, red, str(team1_data['points']))
-                    #     graphics.DrawText(matrix, score_font, 28, 31, green, str(team2_data['points']))
-                    # else:
-                    #     graphics.DrawText(matrix, score_font, 28, 15, white, str(team1_data['points']))
-                    #     graphics.DrawText(matrix, score_font, 28, 31, white, str(team2_data['points']))
-
-                print(f'current screen index: {current_screen_index}')
-                # print(pos_x)
 
                 # Unpack current screen data
                 team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
                 # Draw the current matchups's screen with the scrolling text
-                # stop_name_width = draw_matchup(display_canvas, team1_key, team1_data, team2_key, team2_data)
-                team1_width, team2_width, display_canvas = draw_matchup(display_canvas, pos_1, pos_2, team1_key, team1_data, team2_key, team2_data)
+                team1_width, team2_width, display_canvas = draw_matchup(display_canvas, pos_1, pos_2, team1_data, team2_data, black)
 
+                print(team1_width)
+                print(pos_1+team1_width)
 
-                # Reset scroll direction to left if text has scrolled to the right back to starting position
-                if scroll_direction_1 == 'right' and pos_1 >= 15:
-                    scroll_direction_1 = 'left'
-                # Set scroll direction to right if the end of the text has come onto the screen
-                elif pos_1 < 16 and (pos_1 + team1_width) <= display_canvas.width:
-                    scroll_direction_1 = 'right'
-
-                if scroll_direction_1 == 'left':
+                # Scroll text to the left if text extends beyond end of screen
+                if (pos_1 + team1_width) >= display_canvas.width:
                     pos_1 -= 1
-                elif scroll_direction_1 == 'right':
-                    pos_1 += 1
-
-                # Reset scroll direction to left if text has scrolled to the right back to starting position
-                if scroll_direction_2 == 'right' and pos_2 >= 15:
-                    scroll_direction_2 = 'left'
-                # Set scroll direction to right if the end of the text has come onto the screen
-                elif pos_2 < 16 and (pos_2 + team2_width) <= display_canvas.width:
-                    scroll_direction_2 = 'right'
-
-                if scroll_direction_2 == 'left':
+                    # Reset position if the text has moved completely off the left side
+                    if (pos_1 + team1_width) < display_canvas.width:
+                        # pos_1 = display_canvas.width - 1
+                        pos_1 = 15
+                if (pos_2 + team2_width) >= display_canvas.width:
                     pos_2 -= 1
-                elif scroll_direction_2 == 'right':
-                    pos_2 += 1
-
+                    # Reset position if the text has moved completely off the left side
+                    if pos_2 + team2_width < display_canvas.width:
+                        # pos_2 = display_canvas.width - 1
+                        pos_2 = 15
                 # Swap the canvas to update the display
                 display_canvas = matrix.SwapOnVSync(canvas)
 
