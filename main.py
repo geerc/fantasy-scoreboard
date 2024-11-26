@@ -301,8 +301,8 @@ def main():
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
 
-                # Unpack current screen data
-                team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                    # Unpack current screen data
+                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
                     # Draw the current matchups's screen with the scrolling text
                     canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
