@@ -188,7 +188,7 @@ def main():
 
         return detailed_matchups
 
-    def draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
+    def draw_matchup(canvas, team1_data, team2_data, bg_color):
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
@@ -268,7 +268,7 @@ def main():
             team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
             # Draw the current matchups's screen with the scrolling text
-            canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
+            canvas = draw_matchup(canvas, team1_data, team2_data, black)
 
             # Swap the canvas to update the display
             canvas = matrix.SwapOnVSync(canvas)
@@ -301,7 +301,7 @@ def main():
                     team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
                     # Draw the new matchups's screen with the scrolling text
-                    canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
+                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
 
                     # Swap the canvas to update the display
                     canvas = matrix.SwapOnVSync(canvas)
