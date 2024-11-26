@@ -193,11 +193,11 @@ def main():
         draw_logos(team1_data['logo'], team2_data['logo'])
 
         # Draw scores for both teams
-        draw_scores(team1_data['points'], team2_data['points'])
+        draw_scores(canvas, team1_data['points'], team2_data['points'])
 
         return canvas
 
-    def draw_scores(team1_score, team2_score):
+    def draw_scores(canvas, team1_score, team2_score):
         # Draw team scores and records (static text)
         if team1_score > team2_score:
             graphics.DrawText(canvas, score_font, 1, 31, green, str(team1_score))
