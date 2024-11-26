@@ -240,10 +240,6 @@ def main():
             # Initial data fetch and processing
             matchup_data = get_team_data(display_league, display_week)
 
-            # Initialize position of the text
-            pos_1 = 15
-            pos_2 = 15
-
             print(f'Data: {matchup_data}')
             print('Matchups')
             for matchup in matchup_data:
@@ -308,7 +304,7 @@ def main():
                     canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
                     # Swap the canvas to update the display
-                    # canvas = matrix.SwapOnVSync(canvas)
+                    canvas = matrix.SwapOnVSync(canvas)
 
         except KeyboardInterrupt:
             sys.exit(0)
