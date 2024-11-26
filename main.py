@@ -275,7 +275,7 @@ def main():
             canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
             # Swap the canvas to update the display
-            canvas = matrix.SwapOnVSync(canvas)
+            # canvas = matrix.SwapOnVSync(canvas)
 
             while True:
                 current_time = time.time()
