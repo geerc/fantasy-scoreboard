@@ -235,7 +235,7 @@ def main():
         try:
             print("Press CTRL-C to stop.")
 
-            display_week = 11
+            display_week = 12
 
             # Initial data fetch and processing
             matchup_data = get_team_data(display_league, display_week)
@@ -275,7 +275,7 @@ def main():
             canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
             # Swap the canvas to update the display
-            # canvas = matrix.SwapOnVSync(canvas)
+            canvas = matrix.SwapOnVSync(canvas)
 
             while True:
                 current_time = time.time()
