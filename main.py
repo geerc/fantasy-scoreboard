@@ -33,7 +33,7 @@ def main():
         options.cols = 64
         options.brightness = 100
         #    options.disable_hardware_pulsing = False  # Disable hardware pulsing to avoid needing root permissions
-        options.pwm_lsb_nanoseconds = 300  # Improve LED refresh quality
+        #options.pwm_lsb_nanoseconds = 300  # Improve LED refresh quality
         matrix = RGBMatrix(options=options)
 
         # Create the graphics canvas
@@ -51,7 +51,7 @@ def main():
         options.brightness = 40
         options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
         options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
-        options.pwm_lsb_nanoseconds = 150  # Improve LED refresh quality
+        #options.pwm_lsb_nanoseconds = 150  # Improve LED refresh quality
 
         matrix = RGBMatrix(options=options)
 
@@ -189,7 +189,6 @@ def main():
         return detailed_matchups
 
     def draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, bg_color):
-        canvas.Clear()
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
@@ -302,8 +301,8 @@ def main():
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
 
-                    # Unpack current screen data
-                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                # Unpack current screen data
+                team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
                     # Draw the current matchups's screen with the scrolling text
                     canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
