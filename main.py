@@ -200,14 +200,14 @@ def main():
     def draw_scores(team1_score, team2_score):
         # Draw team scores and records (static text)
         if team1_score > team2_score:
-            graphics.DrawText(matrix, score_font, 1, 31, green, str(team1_score))
-            graphics.DrawText(matrix, score_font, 35, 31, red, str(team2_score))
+            graphics.DrawText(canvas, score_font, 1, 31, green, str(team1_score))
+            graphics.DrawText(canvas, score_font, 35, 31, red, str(team2_score))
         elif team2_score > team1_score:
-            graphics.DrawText(matrix, score_font, 1, 31, red, str(team1_score))
-            graphics.DrawText(matrix, score_font, 35, 31, green, str(team2_score))
+            graphics.DrawText(canvas, score_font, 1, 31, red, str(team1_score))
+            graphics.DrawText(canvas, score_font, 35, 31, green, str(team2_score))
         else:
-            graphics.DrawText(matrix, score_font, 1, 31, white, str(team1_score))
-            graphics.DrawText(matrix, score_font, 35, 31, white, str(team2_score))
+            graphics.DrawText(canvas, score_font, 1, 31, white, str(team1_score))
+            graphics.DrawText(canvas, score_font, 35, 31, white, str(team2_score))
 
         # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
         # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
