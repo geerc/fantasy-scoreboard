@@ -261,12 +261,22 @@ def main():
             current_screen_index = 0
 
             # Rotation interval between screens in seconds
-            rotation_interval = 30
+            rotation_interval = 10
 
             # Time tracking
             last_switch_time = time.time()
             data_refresh_interval = 60
             last_refresh_time = time.time()
+
+            # Draw initial screen
+            # Unpack current screen data
+            team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+
+            # Draw the current matchups's screen with the scrolling text
+            canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
+
+            # Swap the canvas to update the display
+            canvas = matrix.SwapOnVSync(canvas)
 
             while True:
                 current_time = time.time()
@@ -292,18 +302,14 @@ def main():
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
 
-                    # reset starting text position
-                    pos_1 = 15
-                    pos_2 = 15
+                    # Unpack current screen data
+                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
 
-                # Unpack current screen data
-                team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                    # Draw the current matchups's screen with the scrolling text
+                    canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
 
-                # Draw the current matchups's screen with the scrolling text
-                canvas = draw_matchup(canvas, pos_1, pos_2, team1_data, team2_data, black)
-
-                # Swap the canvas to update the display
-                canvas = matrix.SwapOnVSync(canvas)
+                    # Swap the canvas to update the display
+                    canvas = matrix.SwapOnVSync(canvas)
 
         except KeyboardInterrupt:
             sys.exit(0)
