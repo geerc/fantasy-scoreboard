@@ -1,15 +1,22 @@
-import time
-
-import requests
 import argparse
-from PIL import Image, ImageSequence
-from sleeper_wrapper import League
-import traceback
 import os
+import logging
+import sys
+from PIL import Image
 
-# Replace these with your Sleeper league ID and other details
-SLEEPER_LEAGUE_ID = "1116769051939786752"
-REFRESH_INTERVAL = 10  # seconds
+# --- Configuration: can be set via CLI args or environment variables ---
+DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1255668983974072320")
+DEFAULT_WEEK = int(os.getenv("DISPLAY_WEEK", "6"))
+DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
+DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "60"))
+
+# --- Logging setup ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("fantasy_led")
 
 def main():
     # Set up command-line argument parsing
@@ -60,7 +67,7 @@ def main():
 
     # Set up Sleeper League
     my_league = League(SLEEPER_LEAGUE_ID)
-    week = 12
+    week = 6
 
     # Load a font
     try:
@@ -235,7 +242,7 @@ def main():
         try:
             print("Press CTRL-C to stop.")
 
-            display_week = 12
+            display_week = 6
 
             # Initial data fetch and processing
             matchup_data = get_team_data(display_league, display_week)
