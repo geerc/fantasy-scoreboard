@@ -360,20 +360,25 @@ def main():
         try:
             print("Press CTRL-C to stop.")
 
-            # Initial data fetch and processing
+            # --- Initial data fetch ---
             matchup_data = get_team_data(display_league, display_week)
 
-            # Create a list of screens dynamically based on the provided data
+            # Initialize screens
             screens = [
                 (team1_key, team1_data, team2_key, team2_data)
                 for matchup in matchup_data
                 for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
             ]
 
-            # Initialize screen index
-            current_screen_index = 0
+            # Initialize scroll offsets and text widths
+            for matchup in matchup_data:
+                for side, team in matchup.items():
+                    key = f"{team['name']}_{1 if side == 'team1' else 2}"
+                    scroll_offsets.setdefault(key, 0)
+                    scroll_widths[key] = len(team['name']) * 6  # px_per_char
 
-            # Time tracking
+            # Initialize indexes and timers
+            current_screen_index = 0
             last_switch_time = time.time()
             last_refresh_time = time.time()
             last_scroll_time = time.time()
@@ -383,42 +388,49 @@ def main():
 
                 # --- Advance scrolling offsets ---
                 if (current_time - last_scroll_time) * 1000 >= SCROLL_STEP_MS:
-                    for k in scroll_offsets.keys():
-                        scroll_offsets[k] = scroll_offsets.get(k, 0) + 1
-                        wrap_at = scroll_widths.get(k, 100) + 6
-                        if scroll_offsets[k] > wrap_at:
-                            scroll_offsets[k] = 0
+                    for key in scroll_offsets.keys():
+                        scroll_offsets[key] = scroll_offsets.get(key, 0) + 1
+                        wrap_at = scroll_widths.get(key, 100) + 6
+                        if scroll_offsets[key] > wrap_at:
+                            scroll_offsets[key] = 0
                     last_scroll_time = current_time
 
-                    # Redraw the current screen with updated offsets
+                    # Redraw current screen with updated offsets
                     canvas.Clear()
                     team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
                     canvas = draw_matchup(canvas, team1_data, team2_data, black)
                     canvas = matrix.SwapOnVSync(canvas)
-                # --- End scrolling update ---
 
-                # --- Check for screen rotation ---
+                # --- Screen rotation ---
                 if current_time - last_switch_time >= rotation_interval:
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
 
-                    # Draw new screen
+                    # Draw new screen (scroll offsets preserved)
                     canvas.Clear()
                     team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
                     canvas = draw_matchup(canvas, team1_data, team2_data, black)
                     canvas = matrix.SwapOnVSync(canvas)
 
-                # --- Check for data refresh ---
+                # --- Data refresh ---
                 if current_time - last_refresh_time >= data_refresh_interval:
                     matchup_data = get_team_data(display_league, display_week)
 
+                    # Rebuild screens
                     screens = [
                         (team1_key, team1_data, team2_key, team2_data)
                         for matchup in matchup_data
                         for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
                     ]
 
-                    # Reset screen index if necessary
+                    # Ensure offsets for any new team names
+                    for matchup in matchup_data:
+                        for side, team in matchup.items():
+                            key = f"{team['name']}_{1 if side == 'team1' else 2}"
+                            scroll_offsets.setdefault(key, 0)
+                            scroll_widths.setdefault(key, len(team['name']) * 6)
+
+                    # Wrap current screen index safely
                     current_screen_index %= len(screens)
                     last_refresh_time = current_time
 
