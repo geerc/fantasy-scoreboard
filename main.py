@@ -20,14 +20,21 @@ logger = logging.getLogger("fantasy_led")
 
 def main():
     # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description="Run LED board with optional emulator.")
-    parser.add_argument(
-        '--emulator',
-        type=bool,
-        default=False,
-        help="Set to True to use the RGBMatrixEmulator instead of RGBMatrix."
-    )
+    parser = argparse.ArgumentParser(description="Run LED board with options.")
+    parser.add_argument('--emulator', type=bool, default=False, help="Set to True to use the RGBMatrixEmulator instead of RGBMatrix.")
+    parser.add_argument("--league-id", default=DEFAULT_LEAGUE_ID, help="Sleeper league ID (env SLEEPER_LEAGUE_ID)")
+    parser.add_argument("--week", type=int, default=DEFAULT_WEEK, help="Week to display (env DISPLAY_WEEK)")
+    parser.add_argument("--rotation-interval", type=int, default=DEFAULT_ROTATION_INTERVAL,
+                        help="Seconds between screens (env ROTATION_INTERVAL)")
+    parser.add_argument("--data-refresh-interval", type=int, default=DEFAULT_DATA_REFRESH_INTERVAL,
+                        help="Seconds between data refreshes (env DATA_REFRESH_INTERVAL)")
+
     args = parser.parse_args()
+
+    league_id = args.league_id
+    display_week = args.week
+    rotation_interval = args.rotation_interval
+    data_refresh_interval = args.data_refresh_interval
 
     # Import the appropriate RGBMatrix package
     if args.emulator:
@@ -77,8 +84,9 @@ def main():
 
         score_font = graphics.Font()
         score_font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")
-    except IOError:
-        print(f"Error loading font: {e}")
+    except Exception as e:
+        logger.exception("Failed to load fonts. Check font path and that rpi-rgb-led-matrix is installed.")
+        raise
 
     # Set colors
     white = graphics.Color(255, 255, 255)
