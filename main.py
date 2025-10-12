@@ -94,6 +94,29 @@ def main():
     green = graphics.Color(0, 255, 0)
     black = graphics.Color(0, 0, 0)
 
+    # Create the 'logos' directory in the current working directory
+    logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
+    os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
+
+    # Logo cache (PIL Image objects)
+    logo_cache = {}
+
+    def preload_logo(path: str):
+        if path in logo_cache:
+            return logo_cache[path]
+        try:
+            img = Image.open(path).convert("RGB")
+            img = img.resize((20, 20))
+            logo_cache[path] = img
+            logger.debug(f"Preloaded logo: {path}")
+            return img
+        except Exception:
+            logger.exception(f"Failed to preload logo {path}. Using default.")
+            # ensure default is cached
+            if default_logo_path not in logo_cache:
+                preload_logo(default_logo_path)
+            return logo_cache.get(default_logo_path)
+
     def get_team_data(data_league, week):
         """Retrieve detailed team data for each matchup."""
 
@@ -102,10 +125,6 @@ def main():
 
         users = data_league.get_users()  # List of users with 'user_id' and 'display_name'
         rosters = data_league.get_rosters()  # List of rosters with 'owner_id', 'roster_id', 'wins', 'losses', 'ties'
-
-        # Create the 'logos' directory in the current working directory
-        logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
-        os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
 
         # download user avatars
         for user in users:
