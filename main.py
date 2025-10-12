@@ -239,17 +239,17 @@ def main():
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
-        # static areas for names: under each logo, available width = 20 (logo width)
-        name_y = 22
+        # Logo positions and widths
         logo1_x = 1
-        logo2_x = 44
-        available_px = 20
+        logo2_x = 33
+        name_y = 22
+        box_width = 45
 
-        # Draw scrolling team names
-        draw_scrolling_name(canvas, 1, 22, 20, team1_data.get('name'), key=f"{team1_data.get('name')}_1")
-        draw_scrolling_name(canvas, 44, 22, 20, team2_data.get('name'), key=f"{team2_data.get('name')}_2")
+        # Draw team names
+        draw_static_name(canvas, logo1_x, name_y, box_width=box_width, name=team1_data.get('name'), right_align=False)
+        draw_static_name(canvas, logo2_x, name_y, box_width=box_width, name=team2_data.get('name'), right_align=True)
 
-        # Draw scores for both teams
+        # Draw scores
         draw_scores(canvas, team1_data['points'], team2_data['points'])
 
         return canvas
@@ -263,7 +263,7 @@ def main():
 
         # distance from right edge to the right-most pixel of the score text
         # (make this negative to push further right as needed)
-        right_margin = 2
+        right_margin = 1
 
         # Per-character pixel widths for the small bitmap font.
         # Adjust these if your font metrics differ (e.g. 5 or 7 px digits).
@@ -329,49 +329,39 @@ def main():
         if logo2:
             matrix.SetImage(logo2.convert('RGB'), 48, 1)
 
-    def draw_scrolling_name(canvas, x, y, available_px, name, key=None, px_per_char=6):
+    def draw_static_name(canvas, x, y, box_width, name, right_align=False, px_per_char=6):
         """
-        Draw a potentially scrolling name inside a box starting at x with width available_px.
-        Ensures the text stays within the box boundaries using clipping.
+        Draw a static team name in a box under a logo.
+        - x, y: top-left of box
+        - box_width: width in pixels
+        - right_align: if True, align text to the right edge
+        - px_per_char: approximate width of each character in pixels
         """
         if not name:
             return
-        key = key or name  # unique identifier per team
 
-        # approximate full text width in pixels
+        # Calculate text width in pixels
         text_px = len(name) * px_per_char
-        scroll_widths[key] = text_px
 
-        if text_px <= available_px:
-            # Center short names
-            tx = x + (available_px - text_px) // 2
-            graphics.DrawText(canvas, text_font, tx, y, white, name)
-            scroll_offsets[key] = 0
-            return
+        # Clip name if too long
+        max_chars = box_width // px_per_char
+        display_name = name[:max_chars]
+        text_px = len(display_name) * px_per_char
 
-        # Scrolling required
-        offset = scroll_offsets.get(key, 0)
-        draw_x = x - offset
+        # Determine x position
+        if right_align:
+            draw_x = x + box_width - text_px  # right-align
+        else:
+            draw_x = x  # left-align
 
-        # Draw the text twice for wrap-around
-        graphics.DrawText(canvas, text_font, draw_x, y, white, name)
-        graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
+        # Clear the box first
+        text_height = 6  # for 4x6 font
+        for col in range(box_width):
+            for row in range(y - text_height + 1, y + 1):
+                canvas.SetPixel(draw_x + col, row, 0, 0, 0)
 
-        # --- Clipping logic ---
-        # Make sure the text is not drawn outside the available box
-        # Unfortunately RGBMatrix graphics doesn't support direct clipping
-        # So we simulate it by clearing the area first
-        # Clear the box area under the name
-        for i in range(available_px):
-            for j in range(7):  # text height ~7 px for 4x6 font
-                canvas.SetPixel(x + i, y - 6 + j, 0, 0, 0)
-
-        # Draw text again after clearing
-        graphics.DrawText(canvas, text_font, draw_x, y, white, name)
-        graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
-
-        # Update offset
-        scroll_offsets[key] = offset
+        # Draw the name
+        graphics.DrawText(canvas, text_font, draw_x, y, white, display_name)
 
     def display_scores(canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
