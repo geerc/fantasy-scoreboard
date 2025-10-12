@@ -1,8 +1,11 @@
+import time
+import requests
 import argparse
 import os
-import logging
 import sys
+import logging
 from PIL import Image
+from sleeper_wrapper import League
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1255668983974072320")
@@ -73,7 +76,7 @@ def main():
         canvas = matrix.CreateFrameCanvas()
 
     # Set up Sleeper League
-    my_league = League(SLEEPER_LEAGUE_ID)
+    my_league = League(league_id)
     week = 6
 
     # Load a font
