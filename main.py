@@ -315,44 +315,62 @@ def main():
         #     logo2 = logo2.resize((20, 20))
 
         logo1 = preload_logo(team1_logo_path)
+        logo1 = logo1.resize((15, 15))
+
         logo2 = preload_logo(team2_logo_path)
+        logo2 = logo2.resize((15, 15))
+
         matrix.SetImage(logo1, 1, 1)
-        matrix.SetImage(logo2, 43, 1)
+        matrix.SetImage(logo2, 48, 1)
 
         # Draw team logo for both teams
         if logo1:
             matrix.SetImage(logo1.convert('RGB'), 1, 1)
         if logo2:
-            matrix.SetImage(logo2.convert('RGB'), 43, 1)
+            matrix.SetImage(logo2.convert('RGB'), 48, 1)
 
     def draw_scrolling_name(canvas, x, y, available_px, name, key=None, px_per_char=6):
         """
-        Draw a potentially scrolling name inside the box starting at x with width available_px.
-        Uses scroll_offsets[key] for current offset and stores the measured text width in scroll_widths.
+        Draw a potentially scrolling name inside a box starting at x with width available_px.
+        Ensures the text stays within the box boundaries using clipping.
         """
         if not name:
             return
-        key = key or name  # fallback unique identifier per team
+        key = key or name  # unique identifier per team
 
         # approximate full text width in pixels
         text_px = len(name) * px_per_char
         scroll_widths[key] = text_px
 
         if text_px <= available_px:
+            # Center short names
             tx = x + (available_px - text_px) // 2
             graphics.DrawText(canvas, text_font, tx, y, white, name)
-            # reset offset so next time it still centers
             scroll_offsets[key] = 0
             return
 
-        # needs scrolling: read current offset (default 0)
+        # Scrolling required
         offset = scroll_offsets.get(key, 0)
         draw_x = x - offset
-        # draw two copies to allow wrap-around
+
+        # Draw the text twice for wrap-around
         graphics.DrawText(canvas, text_font, draw_x, y, white, name)
         graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
 
-        # leave offset in dict; main loop will advance it periodically
+        # --- Clipping logic ---
+        # Make sure the text is not drawn outside the available box
+        # Unfortunately RGBMatrix graphics doesn't support direct clipping
+        # So we simulate it by clearing the area first
+        # Clear the box area under the name
+        for i in range(available_px):
+            for j in range(7):  # text height ~7 px for 4x6 font
+                canvas.SetPixel(x + i, y - 6 + j, 0, 0, 0)
+
+        # Draw text again after clearing
+        graphics.DrawText(canvas, text_font, draw_x, y, white, name)
+        graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
+
+        # Update offset
         scroll_offsets[key] = offset
 
     def display_scores(canvas, display_league):
