@@ -13,6 +13,13 @@ DEFAULT_WEEK = int(os.getenv("DISPLAY_WEEK", "6"))
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
 DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "60"))
 
+# scrolling state: {matchup_index: offset_px}
+scroll_offsets = {}
+# milliseconds between scroll steps
+SCROLL_STEP_MS = 200
+last_scroll_time = time.time()
+
+
 # --- Logging setup ---
 logging.basicConfig(
     level=logging.INFO,
@@ -229,26 +236,69 @@ def main():
         # Draw logos
         draw_logos(team1_data['logo'], team2_data['logo'])
 
+        # static areas for names: under each logo, available width = 20 (logo width)
+        name_y = 22
+        logo1_x = 1
+        logo2_x = 44
+        available_px = 20
+
+        # Draw scrolling team names
+        draw_scrolling_name(canvas, 1, 22, 20, team1_data.get('name'), key=f"{team1_data.get('name')}_1")
+        draw_scrolling_name(canvas, 44, 22, 20, team2_data.get('name'), key=f"{team2_data.get('name')}_2")
+
         # Draw scores for both teams
         draw_scores(canvas, team1_data['points'], team2_data['points'])
 
         return canvas
 
     def draw_scores(canvas, team1_score, team2_score):
-        # Draw team scores and records (static text)
+        left_x = 1
+        baseline_y = 31
+
+        # Panel width detection fallback
+        panel_width = getattr(matrix, 'width', None) or getattr(matrix, 'Width', None) or 64
+
+        # distance from right edge to the right-most pixel of the score text
+        # (make this negative to push further right as needed)
+        right_margin = 2
+
+        # Per-character pixel widths for the small bitmap font.
+        # Adjust these if your font metrics differ (e.g. 5 or 7 px digits).
+        CHAR_WIDTHS = {
+            '0': 6, '1': 4, '2': 6, '3': 6, '4': 6,
+            '5': 6, '6': 6, '7': 6, '8': 6, '9': 6,
+            '.': 2,  # decimal point is typically narrower
+            '-': 4,  # negative sign, if applicable
+        }
+
+        def text_pixel_width(s: str) -> int:
+            # Sum per-character widths; unknown chars fallback to 6px
+            return sum(CHAR_WIDTHS.get(ch, 6) for ch in s)
+
+        s1 = str(team1_score)
+        s2 = str(team2_score)
+
+        s1_w = text_pixel_width(s1)
+        s2_w = text_pixel_width(s2)
+
+        # right-aligned x for team2 (so right-most pixel sits at panel_width - right_margin)
+        team2_x = panel_width - right_margin - s2_w
+
+        # Guard against overlap with left team; ensure minimum separation
+        min_sep = 14  # minimum pixels between left score x and right score x
+        if team2_x <= left_x + min_sep:
+            team2_x = left_x + min_sep
+
+        # draw using color rules
         if team1_score > team2_score:
-            graphics.DrawText(canvas, score_font, 1, 31, green, str(team1_score))
-            graphics.DrawText(canvas, score_font, 35, 31, red, str(team2_score))
+            graphics.DrawText(canvas, score_font, left_x, baseline_y, green, s1)
+            graphics.DrawText(canvas, score_font, team2_x, baseline_y, red, s2)
         elif team2_score > team1_score:
-            graphics.DrawText(canvas, score_font, 1, 31, red, str(team1_score))
-            graphics.DrawText(canvas, score_font, 35, 31, green, str(team2_score))
+            graphics.DrawText(canvas, score_font, left_x, baseline_y, red, s1)
+            graphics.DrawText(canvas, score_font, team2_x, baseline_y, green, s2)
         else:
-            graphics.DrawText(canvas, score_font, 1, 31, white, str(team1_score))
-            graphics.DrawText(canvas, score_font, 35, 31, white, str(team2_score))
-
-        # graphics.DrawText(matrix, text_font, 1, 12, white, record1)
-        # graphics.DrawText(matrix, text_font, 1, 31, white, record2)
-
+            graphics.DrawText(canvas, score_font, left_x, baseline_y, white, s1)
+            graphics.DrawText(canvas, score_font, team2_x, baseline_y, white, s2)
 
     def draw_logos(team1_logo_path, team2_logo_path):
         logo1 = ""
@@ -265,7 +315,25 @@ def main():
         if logo1:
             matrix.SetImage(logo1.convert('RGB'), 1, 1)
         if logo2:
-            matrix.SetImage(logo2.convert('RGB'), 44, 1)
+            matrix.SetImage(logo2.convert('RGB'), 43, 1)
+
+    def draw_scrolling_name(canvas, x, y, available_px, name, key=None, px_per_char=6):
+        if not name:
+            return
+        key = key or name  # fallback unique identifier per team
+
+        text_px = len(name) * px_per_char
+        if text_px <= available_px:
+            tx = x + (available_px - text_px) // 2
+            graphics.DrawText(canvas, text_font, tx, y, white, name)
+            scroll_offsets[key] = 0
+            return
+
+        offset = scroll_offsets.get(key, 0)
+        draw_x = x - offset
+        graphics.DrawText(canvas, text_font, draw_x, y, white, name)
+        graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
+        scroll_offsets[key] = offset
 
     def display_scores(canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
