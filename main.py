@@ -15,6 +15,10 @@ DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "60"))
 
 # scrolling state: {matchup_index: offset_px}
 scroll_offsets = {}
+
+# per-key measured text widths (px) for wrapping
+scroll_widths = {}
+
 # milliseconds between scroll steps
 SCROLL_STEP_MS = 200
 last_scroll_time = time.time()
@@ -84,7 +88,6 @@ def main():
 
     # Set up Sleeper League
     my_league = League(league_id)
-    week = 6
 
     # Load a font
     try:
@@ -304,12 +307,17 @@ def main():
         logo1 = ""
         logo2 = ""
 
-        if team1_logo_path is not None:
-            logo1 = Image.open(team1_logo_path)
-            logo1 = logo1.resize((20, 20))
-        if team2_logo_path is not None:
-            logo2 = Image.open(team2_logo_path)
-            logo2 = logo2.resize((20, 20))
+        # if team1_logo_path is not None:
+        #     logo1 = Image.open(team1_logo_path)
+        #     logo1 = logo1.resize((20, 20))
+        # if team2_logo_path is not None:
+        #     logo2 = Image.open(team2_logo_path)
+        #     logo2 = logo2.resize((20, 20))
+
+        logo1 = preload_logo(team1_logo_path)
+        logo2 = preload_logo(team2_logo_path)
+        matrix.SetImage(logo1, 1, 1)
+        matrix.SetImage(logo2, 43, 1)
 
         # Draw team logo for both teams
         if logo1:
@@ -318,21 +326,33 @@ def main():
             matrix.SetImage(logo2.convert('RGB'), 43, 1)
 
     def draw_scrolling_name(canvas, x, y, available_px, name, key=None, px_per_char=6):
+        """
+        Draw a potentially scrolling name inside the box starting at x with width available_px.
+        Uses scroll_offsets[key] for current offset and stores the measured text width in scroll_widths.
+        """
         if not name:
             return
         key = key or name  # fallback unique identifier per team
 
+        # approximate full text width in pixels
         text_px = len(name) * px_per_char
+        scroll_widths[key] = text_px
+
         if text_px <= available_px:
             tx = x + (available_px - text_px) // 2
             graphics.DrawText(canvas, text_font, tx, y, white, name)
+            # reset offset so next time it still centers
             scroll_offsets[key] = 0
             return
 
+        # needs scrolling: read current offset (default 0)
         offset = scroll_offsets.get(key, 0)
         draw_x = x - offset
+        # draw two copies to allow wrap-around
         graphics.DrawText(canvas, text_font, draw_x, y, white, name)
         graphics.DrawText(canvas, text_font, draw_x + text_px + 6, y, white, name)
+
+        # leave offset in dict; main loop will advance it periodically
         scroll_offsets[key] = offset
 
     def display_scores(canvas, display_league):
@@ -340,15 +360,8 @@ def main():
         try:
             print("Press CTRL-C to stop.")
 
-            display_week = 6
-
             # Initial data fetch and processing
             matchup_data = get_team_data(display_league, display_week)
-
-            print(f'Data: {matchup_data}')
-            print('Matchups')
-            for matchup in matchup_data:
-                print(matchup)
 
             # Create a list of screens dynamically based on the provided data
             screens = [
@@ -360,56 +373,57 @@ def main():
             # Initialize screen index
             current_screen_index = 0
 
-            # Rotation interval between screens in seconds
-            rotation_interval = 10
-
             # Time tracking
             last_switch_time = time.time()
-            data_refresh_interval = 60
             last_refresh_time = time.time()
-
-            # Draw initial screen
-            # Unpack current screen data
-            team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-
-            # Draw the current matchups's screen with the scrolling text
-            canvas = draw_matchup(canvas, team1_data, team2_data, black)
-
-            # Swap the canvas to update the display
-            canvas = matrix.SwapOnVSync(canvas)
+            last_scroll_time = time.time()
 
             while True:
                 current_time = time.time()
 
-                # Check if it's time to refresh the data and logos
+                # --- Advance scrolling offsets ---
+                if (current_time - last_scroll_time) * 1000 >= SCROLL_STEP_MS:
+                    for k in scroll_offsets.keys():
+                        scroll_offsets[k] = scroll_offsets.get(k, 0) + 1
+                        wrap_at = scroll_widths.get(k, 100) + 6
+                        if scroll_offsets[k] > wrap_at:
+                            scroll_offsets[k] = 0
+                    last_scroll_time = current_time
+
+                    # Redraw the current screen with updated offsets
+                    canvas.Clear()
+                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
+                    canvas = matrix.SwapOnVSync(canvas)
+                # --- End scrolling update ---
+
+                # --- Check for screen rotation ---
+                if current_time - last_switch_time >= rotation_interval:
+                    current_screen_index = (current_screen_index + 1) % len(screens)
+                    last_switch_time = current_time
+
+                    # Draw new screen
+                    canvas.Clear()
+                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
+                    canvas = matrix.SwapOnVSync(canvas)
+
+                # --- Check for data refresh ---
                 if current_time - last_refresh_time >= data_refresh_interval:
                     matchup_data = get_team_data(display_league, display_week)
 
-                    # Create a list of screens dynamically based on the provided data
                     screens = [
                         (team1_key, team1_data, team2_key, team2_data)
                         for matchup in matchup_data
                         for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
                     ]
 
-                    # reset last refresh time
+                    # Reset screen index if necessary
+                    current_screen_index %= len(screens)
                     last_refresh_time = current_time
 
-                # Check if it's time to switch the screen
-                if current_time - last_switch_time >= rotation_interval:
-                    canvas.Clear()
-
-                    current_screen_index = (current_screen_index + 1) % len(screens)
-                    last_switch_time = current_time
-
-                    # Unpack new screen data
-                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-
-                    # Draw the new matchups's screen with the scrolling text
-                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
-
-                    # Swap the canvas to update the display
-                    canvas = matrix.SwapOnVSync(canvas)
+                # Small sleep to reduce CPU usage
+                time.sleep(0.05)
 
         except KeyboardInterrupt:
             sys.exit(0)
