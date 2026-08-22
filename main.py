@@ -8,7 +8,7 @@ from PIL import Image
 from sleeper_wrapper import League
 
 # --- Configuration: can be set via CLI args or environment variables ---
-DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1255668983974072320")
+DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
 DISPLAY_WEEK_OVERRIDE = os.getenv("DISPLAY_WEEK")
 DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
