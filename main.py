@@ -9,9 +9,11 @@ from sleeper_wrapper import League
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1255668983974072320")
-DEFAULT_WEEK = int(os.getenv("DISPLAY_WEEK", "6"))
+DISPLAY_WEEK_OVERRIDE = os.getenv("DISPLAY_WEEK")
+DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
 DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "60"))
+SLEEPER_NFL_STATE_URL = "https://api.sleeper.app/v1/state/nfl"
 
 # scrolling state: {matchup_index: offset_px}
 scroll_offsets = {}
@@ -32,6 +34,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("fantasy_led")
 
+
+def get_current_nfl_week():
+    """Return Sleeper's current NFL week."""
+    response = requests.get(SLEEPER_NFL_STATE_URL, timeout=10)
+    response.raise_for_status()
+    week = response.json().get("week")
+    if not isinstance(week, int) or week < 1:
+        raise ValueError(f"Sleeper returned an invalid NFL week: {week!r}")
+    return week
+
+
 def main():
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description="Run LED board with options.")
@@ -41,7 +54,12 @@ def main():
         help="Use the browser-based RGBMatrixEmulator instead of the physical LED board.",
     )
     parser.add_argument("--league-id", default=DEFAULT_LEAGUE_ID, help="Sleeper league ID (env SLEEPER_LEAGUE_ID)")
-    parser.add_argument("--week", type=int, default=DEFAULT_WEEK, help="Week to display (env DISPLAY_WEEK)")
+    parser.add_argument(
+        "--week",
+        type=int,
+        default=DEFAULT_WEEK,
+        help="Week to display; defaults to Sleeper's current NFL week (env DISPLAY_WEEK)",
+    )
     parser.add_argument("--rotation-interval", type=int, default=DEFAULT_ROTATION_INTERVAL,
                         help="Seconds between screens (env ROTATION_INTERVAL)")
     parser.add_argument("--data-refresh-interval", type=int, default=DEFAULT_DATA_REFRESH_INTERVAL,
@@ -50,7 +68,21 @@ def main():
     args = parser.parse_args()
 
     league_id = args.league_id
-    display_week = args.week
+    week_is_dynamic = args.week is None
+    if args.week is not None:
+        display_week = args.week
+        logger.info("Displaying configured NFL week %s", display_week)
+    else:
+        try:
+            display_week = get_current_nfl_week()
+            logger.info("Sleeper reports the current NFL week as %s", display_week)
+        except (requests.RequestException, ValueError) as error:
+            display_week = 1
+            logger.warning(
+                "Could not determine the current NFL week (%s); falling back to week %s",
+                error,
+                display_week,
+            )
     rotation_interval = args.rotation_interval
     data_refresh_interval = args.data_refresh_interval
 
@@ -369,6 +401,7 @@ def main():
 
     def display_scores(canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
+        nonlocal display_week
         try:
             print("Press CTRL-C to stop.")
 
@@ -426,6 +459,23 @@ def main():
 
                 # --- Data refresh ---
                 if current_time - last_refresh_time >= data_refresh_interval:
+                    if week_is_dynamic:
+                        try:
+                            current_week = get_current_nfl_week()
+                            if current_week != display_week:
+                                logger.info(
+                                    "NFL week changed from %s to %s",
+                                    display_week,
+                                    current_week,
+                                )
+                                display_week = current_week
+                        except (requests.RequestException, ValueError) as error:
+                            logger.warning(
+                                "Could not refresh the current NFL week; continuing with week %s: %s",
+                                display_week,
+                                error,
+                            )
+
                     matchup_data = get_team_data(display_league, display_week)
 
                     # Rebuild screens

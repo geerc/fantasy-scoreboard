@@ -15,7 +15,9 @@ venv/bin/python main.py --emulator
 The emulator opens in a browser at [http://localhost:8888](http://localhost:8888).
 Press Control-C in the terminal to stop it.
 
-The defaults can be overridden with command-line options:
+By default, the app asks Sleeper for the current NFL week at startup and on each
+data refresh. The week and other defaults can be overridden with command-line
+options:
 
 ```bash
 venv/bin/python main.py --emulator \
