@@ -2,27 +2,47 @@
 
 This Python program fetches live fantasy football scores from a Sleeper league and displays them on a 64x32 LED matrix connected to a Raspberry Pi.
 
-## Requirements
+## Local emulator
 
-- Raspberry Pi (configured with a 64x32 RGB LED matrix)
-- Python 3.x
-- Sleeper API account and league ID
-- Internet connection for live score fetching
+From the repository root:
 
-## Setup
+```bash
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements.txt
+venv/bin/python main.py --emulator
+```
 
-1. Clone this repository and navigate to the project folder.
-2. Install the required packages:
-3. 
-   ```bash
-   pip install -r requirements.txt
-4. Clone rpi-rgb-led-matrix repository and install Python binding
-5. 
-   ```bash
-    sudo apt-get install -y make
-    mkdir submodules
-    cd submodules
-    git clone https://github.com/hzeller/rpi-rgb-led-matrix.git matrix
-   sudo apt-get update && sudo apt-get install python3-dev cython3 -y
-   make build-python 
-   sudo make install-python 
+The emulator opens in a browser at [http://localhost:8888](http://localhost:8888).
+Press Control-C in the terminal to stop it.
+
+The defaults can be overridden with command-line options:
+
+```bash
+venv/bin/python main.py --emulator \
+  --league-id YOUR_SLEEPER_LEAGUE_ID \
+  --week 6 \
+  --rotation-interval 10 \
+  --data-refresh-interval 60
+```
+
+The same defaults can be set with `SLEEPER_LEAGUE_ID`, `DISPLAY_WEEK`,
+`ROTATION_INTERVAL`, and `DATA_REFRESH_INTERVAL` environment variables.
+
+## Physical LED board
+
+Physical-board mode requires a Raspberry Pi configured with a 64x32 RGB LED
+matrix, plus the `rpi-rgb-led-matrix` Python bindings. Run without `--emulator`:
+
+```bash
+venv/bin/python main.py
+```
+
+To build the bindings on the Raspberry Pi:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y make python3-dev cython3
+cd rpi-rgb-led-matrix
+make build-python
+sudo make install-python
+```

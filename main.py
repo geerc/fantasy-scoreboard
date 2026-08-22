@@ -35,7 +35,11 @@ logger = logging.getLogger("fantasy_led")
 def main():
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(description="Run LED board with options.")
-    parser.add_argument('--emulator', type=bool, default=False, help="Set to True to use the RGBMatrixEmulator instead of RGBMatrix.")
+    parser.add_argument(
+        "--emulator",
+        action="store_true",
+        help="Use the browser-based RGBMatrixEmulator instead of the physical LED board.",
+    )
     parser.add_argument("--league-id", default=DEFAULT_LEAGUE_ID, help="Sleeper league ID (env SLEEPER_LEAGUE_ID)")
     parser.add_argument("--week", type=int, default=DEFAULT_WEEK, help="Week to display (env DISPLAY_WEEK)")
     parser.add_argument("--rotation-interval", type=int, default=DEFAULT_ROTATION_INTERVAL,
