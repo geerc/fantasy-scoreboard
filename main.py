@@ -290,6 +290,13 @@ def main():
 
         return canvas
 
+    def draw_empty_screen(canvas):
+        """Show a useful placeholder while the league has no scheduled matchups."""
+        canvas.Clear()
+        graphics.DrawText(canvas, text_font, 2, 12, white, "NO MATCHUPS")
+        graphics.DrawText(canvas, text_font, 2, 23, white, f"WEEK {display_week}")
+        return matrix.SwapOnVSync(canvas)
+
     def draw_scores(canvas, team1_score, team2_score):
         left_x = 1
         baseline_y = 31
@@ -415,6 +422,10 @@ def main():
                 for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
             ]
 
+            if not screens:
+                logger.info("No matchups are scheduled for week %s", display_week)
+                canvas = draw_empty_screen(canvas)
+
             # Initialize scroll offsets and text widths
             for matchup in matchup_data:
                 for side, team in matchup.items():
@@ -440,14 +451,15 @@ def main():
                             scroll_offsets[key] = 0
                     last_scroll_time = current_time
 
-                    # Redraw current screen with updated offsets
-                    canvas.Clear()
-                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
-                    canvas = matrix.SwapOnVSync(canvas)
+                    if screens:
+                        # Redraw current screen with updated offsets
+                        canvas.Clear()
+                        team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
+                        canvas = draw_matchup(canvas, team1_data, team2_data, black)
+                        canvas = matrix.SwapOnVSync(canvas)
 
                 # --- Screen rotation ---
-                if current_time - last_switch_time >= rotation_interval:
+                if screens and current_time - last_switch_time >= rotation_interval:
                     current_screen_index = (current_screen_index + 1) % len(screens)
                     last_switch_time = current_time
 
@@ -492,8 +504,13 @@ def main():
                             scroll_offsets.setdefault(key, 0)
                             scroll_widths.setdefault(key, len(team['name']) * 6)
 
-                    # Wrap current screen index safely
-                    current_screen_index %= len(screens)
+                    if screens:
+                        # Wrap current screen index safely
+                        current_screen_index %= len(screens)
+                    else:
+                        current_screen_index = 0
+                        logger.info("No matchups are scheduled for week %s", display_week)
+                        canvas = draw_empty_screen(canvas)
                     last_refresh_time = current_time
 
                 # Small sleep to reduce CPU usage
