@@ -35,14 +35,15 @@ logging.basicConfig(
 logger = logging.getLogger("fantasy_led")
 
 
-def get_current_nfl_week():
-    """Return Sleeper's current NFL week."""
+def get_current_nfl_state():
+    """Return Sleeper's current NFL week and season type."""
     response = requests.get(SLEEPER_NFL_STATE_URL, timeout=10)
     response.raise_for_status()
-    week = response.json().get("week")
+    state = response.json()
+    week = state.get("week")
     if not isinstance(week, int) or week < 1:
         raise ValueError(f"Sleeper returned an invalid NFL week: {week!r}")
-    return week
+    return week, state.get("season_type")
 
 
 def main():
@@ -69,20 +70,22 @@ def main():
 
     league_id = args.league_id
     week_is_dynamic = args.week is None
+    try:
+        current_week, season_type = get_current_nfl_state()
+    except (requests.RequestException, ValueError) as error:
+        current_week = None
+        season_type = None
+        logger.warning("Could not determine the current NFL state: %s", error)
+
     if args.week is not None:
         display_week = args.week
         logger.info("Displaying configured NFL week %s", display_week)
+    elif current_week is not None:
+        display_week = current_week
+        logger.info("Sleeper reports the current NFL week as %s", display_week)
     else:
-        try:
-            display_week = get_current_nfl_week()
-            logger.info("Sleeper reports the current NFL week as %s", display_week)
-        except (requests.RequestException, ValueError) as error:
-            display_week = 1
-            logger.warning(
-                "Could not determine the current NFL week (%s); falling back to week %s",
-                error,
-                display_week,
-            )
+        display_week = 1
+        logger.warning("Falling back to NFL week %s", display_week)
     rotation_interval = args.rotation_interval
     data_refresh_interval = args.data_refresh_interval
 
@@ -294,7 +297,8 @@ def main():
         """Show a useful placeholder while the league has no scheduled matchups."""
         canvas.Clear()
         graphics.DrawText(canvas, text_font, 2, 12, white, "NO MATCHUPS")
-        graphics.DrawText(canvas, text_font, 2, 23, white, f"WEEK {display_week}")
+        period_label = "PRESEASON" if season_type == "pre" else f"WEEK {display_week}"
+        graphics.DrawText(canvas, text_font, 2, 23, white, period_label)
         return matrix.SwapOnVSync(canvas)
 
     def draw_scores(canvas, team1_score, team2_score):
@@ -408,7 +412,7 @@ def main():
 
     def display_scores(canvas, display_league):
         """Display live fantasy football scores on the LED matrix."""
-        nonlocal display_week
+        nonlocal display_week, season_type
         try:
             print("Press CTRL-C to stop.")
 
@@ -471,9 +475,9 @@ def main():
 
                 # --- Data refresh ---
                 if current_time - last_refresh_time >= data_refresh_interval:
-                    if week_is_dynamic:
-                        try:
-                            current_week = get_current_nfl_week()
+                    try:
+                        current_week, season_type = get_current_nfl_state()
+                        if week_is_dynamic:
                             if current_week != display_week:
                                 logger.info(
                                     "NFL week changed from %s to %s",
@@ -481,12 +485,12 @@ def main():
                                     current_week,
                                 )
                                 display_week = current_week
-                        except (requests.RequestException, ValueError) as error:
-                            logger.warning(
-                                "Could not refresh the current NFL week; continuing with week %s: %s",
-                                display_week,
-                                error,
-                            )
+                    except (requests.RequestException, ValueError) as error:
+                        logger.warning(
+                            "Could not refresh the current NFL state; continuing with week %s: %s",
+                            display_week,
+                            error,
+                        )
 
                     matchup_data = get_team_data(display_league, display_week)
 
