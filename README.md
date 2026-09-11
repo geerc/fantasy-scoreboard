@@ -193,12 +193,22 @@ Spotify Board mode, switches that manager to `off`, stops `sportsmatrix.service`
 so the GPIO matrix is released, and starts this scoreboard. On stop or failure,
 it restores the previously selected Spotify Board mode.
 
-Copy the project to `/home/christiangeer/fantasy-scoreboard`, then install the
-service once:
+Clone the project and install the service once:
 
 ```bash
+cd /home/christiangeer
+git clone https://github.com/geerc/fantasy-scoreboard.git
 cd /home/christiangeer/fantasy-scoreboard
 ./scripts/install_pi_service.sh
+```
+
+Pull future versions while the service is stopped, then start it again:
+
+```bash
+sudo systemctl stop fantasy-scoreboard.service
+cd /home/christiangeer/fantasy-scoreboard
+git pull --ff-only
+sudo systemctl start fantasy-scoreboard.service
 ```
 
 Manual controls (also suitable for iOS **Run Script over SSH** actions):
