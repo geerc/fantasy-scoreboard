@@ -1,0 +1,1208 @@
+{
+  "description": "SYNTHETIC test increments and scoring plays, NOT historical play-by-play. IDs/names chosen from the 2025 Week 8 starter fixture. ESPN-shaped D/ST records and Sleeper-shaped counters exercise the same detector as live mode.",
+  "expected_total_celebrations": 7,
+  "snapshots": [
+    {
+      "at_seconds": 0,
+      "note": "Baseline: existing RB rushing TD, QB passing TD and D/ST INT must NOT celebrate.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 1,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 0
+          },
+          "11647": {
+            "rush_td": 1
+          },
+          "12493": {
+            "rec_td": 0
+          },
+          "bench-wr": {
+            "rec_td": 0
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": []
+          },
+          {
+            "id": "demo-pit",
+            "plays": []
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 3,
+      "note": "Two starter TDs arrive together. Passing and bench touchdowns are ignored.",
+      "expected_new_events": [
+        "RUSHING TD",
+        "RECEIVING TD"
+      ],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 2,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 0
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": []
+          },
+          {
+            "id": "demo-pit",
+            "plays": []
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 4,
+      "note": "Identical repeated response must not enqueue duplicates.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 2,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 0
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": []
+          },
+          {
+            "id": "demo-pit",
+            "plays": []
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 6,
+      "note": "D/ST interception, fumble, punt and kickoff returns while an earlier celebration is active.",
+      "expected_new_events": [
+        "INT TOUCHDOWN",
+        "RETURN TOUCHDOWN",
+        "FUM TOUCHDOWN",
+        "RETURN TOUCHDOWN"
+      ],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 2,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 0
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 7,
+      "note": "Passing and individual return touchdowns must not celebrate.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 3,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 0
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1,
+            "kr_td": 1,
+            "pr_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 9,
+      "note": "A later starter touchdown joins the existing queue.",
+      "expected_new_events": [
+        "RUSHING TD"
+      ],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 3,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 1
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1,
+            "kr_td": 1,
+            "pr_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 10,
+      "note": "Downward stat correction does not replay a touchdown.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 3,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 1
+          },
+          "11647": {
+            "rush_td": 1
+          },
+          "12493": {
+            "rec_td": 1,
+            "kr_td": 1,
+            "pr_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 11,
+      "note": "Restoration of an already seen count is not a new touchdown.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 3,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 1
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1,
+            "kr_td": 1,
+            "pr_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "at_seconds": 12,
+      "note": "Final repeated poll is silent.",
+      "expected_new_events": [],
+      "snapshot": {
+        "context": [
+          "1255668983974072320",
+          "2025",
+          "regular",
+          8
+        ],
+        "starters": [
+          "7591",
+          "11647",
+          "12493",
+          "8138",
+          "IND",
+          "HOU",
+          "PIT"
+        ],
+        "players": {
+          "7591": {
+            "full_name": "Jalen Hurts",
+            "position": "QB"
+          },
+          "8138": {
+            "full_name": "James Cook",
+            "position": "RB"
+          },
+          "11647": {
+            "full_name": "Bucky Irving",
+            "position": "RB"
+          },
+          "12493": {
+            "full_name": "Emeka Egbuka",
+            "position": "WR"
+          },
+          "bench-wr": {
+            "full_name": "Bench Receiver",
+            "position": "WR"
+          },
+          "IND": {
+            "position": "DEF"
+          },
+          "HOU": {
+            "position": "DEF"
+          },
+          "PIT": {
+            "position": "DEF"
+          }
+        },
+        "stats": {
+          "7591": {
+            "pass_td": 3,
+            "rush_td": 0
+          },
+          "8138": {
+            "rush_td": 1
+          },
+          "11647": {
+            "rush_td": 2
+          },
+          "12493": {
+            "rec_td": 1,
+            "kr_td": 1,
+            "pr_td": 1
+          },
+          "bench-wr": {
+            "rec_td": 1
+          }
+        },
+        "games": [
+          {
+            "id": "demo-ind",
+            "plays": [
+              {
+                "id": "old-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-int",
+                "type": {
+                  "text": "Interception Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              },
+              {
+                "id": "new-kick",
+                "type": {
+                  "text": "Kickoff Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "IND"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-hou",
+            "plays": [
+              {
+                "id": "new-fum",
+                "type": {
+                  "text": "Fumble Recovery (Opponent) Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "HOU"
+                }
+              }
+            ]
+          },
+          {
+            "id": "demo-pit",
+            "plays": [
+              {
+                "id": "new-punt",
+                "type": {
+                  "text": "Punt Return Touchdown"
+                },
+                "scoringType": {
+                  "name": "touchdown"
+                },
+                "team": {
+                  "abbreviation": "PIT"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

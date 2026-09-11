@@ -1,0 +1,18 @@
+[Unit]
+Description=Fantasy Football LED Scoreboard
+After=network-online.target spotify-board-manager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/christiangeer/fantasy-scoreboard
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode acquire
+ExecStart=/home/christiangeer/fantasy-scoreboard/.venv/bin/python main.py --layout diagonal
+ExecStopPost=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode release
+Restart=no
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

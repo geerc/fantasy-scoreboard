@@ -6,13 +6,19 @@ import sys
 import logging
 from PIL import Image
 from sleeper_wrapper import League
+from name_scroll import NameRenderer
+from layout_config import (add_layout_arguments, resolve_layout,
+                           add_touchdown_arguments, resolve_touchdown_settings)
+from touchdowns import CelebrationQueue
+from touchdown_source import create_touchdown_monitor
+from touchdown_animation import CelebrationRenderer
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
 DISPLAY_WEEK_OVERRIDE = os.getenv("DISPLAY_WEEK")
 DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
-DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "60"))
+DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "25"))
 SLEEPER_NFL_STATE_URL = "https://api.sleeper.app/v1/state/nfl"
 
 # scrolling state: {matchup_index: offset_px}
@@ -66,7 +72,16 @@ def main():
     parser.add_argument("--data-refresh-interval", type=int, default=DEFAULT_DATA_REFRESH_INTERVAL,
                         help="Seconds between data refreshes (env DATA_REFRESH_INTERVAL)")
 
+    add_layout_arguments(parser)
+    add_touchdown_arguments(parser)
     args = parser.parse_args()
+    try:
+        layout = resolve_layout(args.layout, args.config)
+        touchdown_duration, touchdown_poll_interval = resolve_touchdown_settings(
+            args.touchdown_duration, args.touchdown_poll_interval, args.config)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+    logger.info("Using %s board layout", layout)
 
     league_id = args.league_id
     week_is_dynamic = args.week is None
@@ -118,6 +133,8 @@ def main():
         options.brightness = 40
         options.hardware_mapping = 'adafruit-hat'  # 'regular' for most, but it could be different
         options.gpio_slowdown = 4  # Try values like 1, 2, or 3 for slowdown
+        # This root-owned service needs to refresh cached logos after GPIO setup.
+        options.drop_privileges = False
         #options.pwm_lsb_nanoseconds = 150  # Improve LED refresh quality
 
         matrix = RGBMatrix(options=options)
@@ -133,6 +150,7 @@ def main():
         # Load a font
         text_font = graphics.Font()
         text_font.LoadFont("rpi-rgb-led-matrix/fonts/4x6.bdf")  # Adjust font path if needed
+        name_renderer = NameRenderer("rpi-rgb-led-matrix/fonts/4x6.bdf")
 
         score_font = graphics.Font()
         score_font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")
@@ -275,22 +293,15 @@ def main():
         return detailed_matchups
 
     def draw_matchup(canvas, team1_data, team2_data, bg_color):
-        # Draw logos
-        draw_logos(team1_data['logo'], team2_data['logo'])
-
-        # Logo positions and widths
-        logo1_x = 1
-        logo2_x = 33
-        name_y = 22
-        box_width = 45
-
-        # Draw team names
-        draw_static_name(canvas, logo1_x, name_y, box_width=box_width, name=team1_data.get('name'), right_align=False)
-        draw_static_name(canvas, logo2_x, name_y, box_width=box_width, name=team2_data.get('name'), right_align=True)
-
-        # Draw scores
-        draw_scores(canvas, team1_data['points'], team2_data['points'])
-
+        # Compose the entire frame offscreen; only SwapOnVSync publishes it.
+        if layout == "diagonal":
+            draw_diagonal(canvas, team1_data, team2_data)
+        else:
+            draw_logos(canvas, team1_data['logo'], team2_data['logo'])
+            canvas.SetImage(name_renderer.team_window(team1_data.get('name'), 30), 1, 17, False)
+            canvas.SetImage(name_renderer.team_window(
+                team2_data.get('name'), 30, right_align=True), 33, 17, False)
+            draw_scores(canvas, team1_data['points'], team2_data['points'])
         return canvas
 
     def draw_empty_screen(canvas):
@@ -350,178 +361,128 @@ def main():
             graphics.DrawText(canvas, score_font, left_x, baseline_y, white, s1)
             graphics.DrawText(canvas, score_font, team2_x, baseline_y, white, s2)
 
-    def draw_logos(team1_logo_path, team2_logo_path):
-        logo1 = ""
-        logo2 = ""
+    def draw_logos(canvas, team1_logo_path, team2_logo_path):
+        logo1 = preload_logo(team1_logo_path).resize((15, 15))
+        logo2 = preload_logo(team2_logo_path).resize((15, 15))
+        canvas.SetImage(logo1, 1, 1, False)
+        canvas.SetImage(logo2, 48, 1, False)
 
-        # if team1_logo_path is not None:
-        #     logo1 = Image.open(team1_logo_path)
-        #     logo1 = logo1.resize((20, 20))
-        # if team2_logo_path is not None:
-        #     logo2 = Image.open(team2_logo_path)
-        #     logo2 = logo2.resize((20, 20))
+    def draw_diagonal(canvas, team1, team2):
+        # Mirrored two-row team blocks with two-pixel outer margins and gaps.
+        canvas.SetImage(preload_logo(team1['logo']).resize((12, 12)), 2, 2, False)
+        canvas.SetImage(preload_logo(team2['logo']).resize((12, 12)), 50, 18, False)
+        for team, side, x, y in ((team1, 1, 16, 9), (team2, 2, 2, 18)):
+            name = team.get('name')
+            tile = name_renderer.team_window(name, width=46, right_align=(side == 2))
+            canvas.SetImage(tile, x, y, False)
 
-        logo1 = preload_logo(team1_logo_path)
-        logo1 = logo1.resize((15, 15))
-
-        logo2 = preload_logo(team2_logo_path)
-        logo2 = logo2.resize((15, 15))
-
-        matrix.SetImage(logo1, 1, 1)
-        matrix.SetImage(logo2, 48, 1)
-
-        # Draw team logo for both teams
-        if logo1:
-            matrix.SetImage(logo1.convert('RGB'), 1, 1)
-        if logo2:
-            matrix.SetImage(logo2.convert('RGB'), 48, 1)
-
-    def draw_static_name(canvas, x, y, box_width, name, right_align=False, px_per_char=6):
-        """
-        Draw a static team name in a box under a logo.
-        - x, y: top-left of box
-        - box_width: width in pixels
-        - right_align: if True, align text to the right edge
-        - px_per_char: approximate width of each character in pixels
-        """
-        if not name:
-            return
-
-        # Calculate text width in pixels
-        text_px = len(name) * px_per_char
-
-        # Clip name if too long
-        max_chars = box_width // px_per_char
-        display_name = name[:max_chars]
-        text_px = len(display_name) * px_per_char
-
-        # Determine x position
-        if right_align:
-            draw_x = x + box_width - text_px  # right-align
-        else:
-            draw_x = x  # left-align
-
-        # Clear the box first
-        text_height = 6  # for 4x6 font
-        for col in range(box_width):
-            for row in range(y - text_height + 1, y + 1):
-                canvas.SetPixel(draw_x + col, row, 0, 0, 0)
-
-        # Draw the name
-        graphics.DrawText(canvas, text_font, draw_x, y, white, display_name)
+        points1, points2 = team1['points'], team2['points']
+        color1 = green if points1 > points2 else red if points1 < points2 else white
+        color2 = green if points2 > points1 else red if points2 < points1 else white
+        score1, score2 = str(points1), str(points2)
+        # Scores use the same 4x6 font as names. Team 2 hugs its logo-side edge.
+        right_width = sum(text_font.CharacterWidth(ord(char)) for char in score2)
+        graphics.DrawText(canvas, text_font, 16, 7, color1, score1)
+        graphics.DrawText(canvas, text_font, 48 - right_width, 31, color2, score2)
 
     def display_scores(canvas, display_league):
-        """Display live fantasy football scores on the LED matrix."""
+        """Render complete frames; queue TD interrupts without advancing rotation."""
         nonlocal display_week, season_type
+        monitor = None
         try:
             print("Press CTRL-C to stop.")
-
-            # --- Initial data fetch ---
             matchup_data = get_team_data(display_league, display_week)
 
-            # Initialize screens
-            screens = [
-                (team1_key, team1_data, team2_key, team2_data)
-                for matchup in matchup_data
-                for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
-            ]
+            def rebuild(data):
+                for matchup in data:
+                    for side, team in matchup.items():
+                        key = f"{team['name']}_{1 if side == 'team1' else 2}"
+                        scroll_offsets.setdefault(key, 0)
+                        scroll_widths[key] = name_renderer.text_width(team['name'])
+                return [(m["team1"], m["team2"]) for m in data]
 
-            if not screens:
-                logger.info("No matchups are scheduled for week %s", display_week)
-                canvas = draw_empty_screen(canvas)
-
-            # Initialize scroll offsets and text widths
-            for matchup in matchup_data:
-                for side, team in matchup.items():
-                    key = f"{team['name']}_{1 if side == 'team1' else 2}"
-                    scroll_offsets.setdefault(key, 0)
-                    scroll_widths[key] = len(team['name']) * 6  # px_per_char
-
-            # Initialize indexes and timers
+            screens = rebuild(matchup_data)
             current_screen_index = 0
-            last_switch_time = time.time()
-            last_refresh_time = time.time()
-            last_scroll_time = time.time()
+            celebration_renderer = CelebrationRenderer(name_renderer)
+            celebrations = CelebrationQueue(touchdown_duration)
+            monitor = create_touchdown_monitor(league_id, display_week, touchdown_poll_interval)
+            last_tick = time.monotonic()
+            last_refresh_time = last_tick
+            last_frame_time = last_tick - 1
+            last_scroll_time = last_tick
+            rotation_elapsed = 0
+            was_celebrating = False
 
             while True:
-                current_time = time.time()
-
-                # --- Advance scrolling offsets ---
-                if (current_time - last_scroll_time) * 1000 >= SCROLL_STEP_MS:
-                    for key in scroll_offsets.keys():
-                        scroll_offsets[key] = scroll_offsets.get(key, 0) + 1
-                        wrap_at = scroll_widths.get(key, 100) + 6
-                        if scroll_offsets[key] > wrap_at:
-                            scroll_offsets[key] = 0
-                    last_scroll_time = current_time
-
-                    if screens:
-                        # Redraw current screen with updated offsets
-                        canvas.Clear()
-                        team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-                        canvas = draw_matchup(canvas, team1_data, team2_data, black)
-                        canvas = matrix.SwapOnVSync(canvas)
-
-                # --- Screen rotation ---
-                if screens and current_time - last_switch_time >= rotation_interval:
-                    current_screen_index = (current_screen_index + 1) % len(screens)
-                    last_switch_time = current_time
-
-                    # Draw new screen (scroll offsets preserved)
-                    canvas.Clear()
-                    team1_key, team1_data, team2_key, team2_data = screens[current_screen_index]
-                    canvas = draw_matchup(canvas, team1_data, team2_data, black)
+                now = time.monotonic()
+                delta = max(0, now - last_tick)
+                last_tick = now
+                resumed = was_celebrating
+                if not was_celebrating:
+                    rotation_elapsed += delta
+                events = monitor.events(display_week, now)
+                for event in events:
+                    logger.info("Queued %s: %s", event.kind, event.name)
+                celebration = celebrations.step(now, events)
+                if celebration is not None:
+                    event, elapsed = celebration
+                    canvas.SetImage(celebration_renderer.render(event, elapsed, touchdown_duration), 0, 0, False)
                     canvas = matrix.SwapOnVSync(canvas)
+                    was_celebrating = True
+                    # Freeze name offsets and the matchup rotation while celebrating.
+                    last_scroll_time = now
+                    time.sleep(0.05)
+                    continue
+                was_celebrating = False
+                redraw = resumed
 
-                # --- Data refresh ---
-                if current_time - last_refresh_time >= data_refresh_interval:
+                # Network-heavy legacy matchup refresh is deferred until the
+                # celebration queue is empty; the TD worker continues polling.
+                if now - last_refresh_time >= data_refresh_interval:
+                    previous_week = display_week
                     try:
                         current_week, season_type = get_current_nfl_state()
                         if week_is_dynamic:
-                            if current_week != display_week:
-                                logger.info(
-                                    "NFL week changed from %s to %s",
-                                    display_week,
-                                    current_week,
-                                )
-                                display_week = current_week
+                            display_week = current_week
                     except (requests.RequestException, ValueError) as error:
-                        logger.warning(
-                            "Could not refresh the current NFL state; continuing with week %s: %s",
-                            display_week,
-                            error,
-                        )
+                        logger.warning("Could not refresh NFL state: %s", error)
+                    try:
+                        matchup_data = get_team_data(display_league, display_week)
+                        screens = rebuild(matchup_data)
+                        current_screen_index = current_screen_index % len(screens) if screens else 0
+                        redraw = True
+                    except (requests.RequestException, ValueError) as error:
+                        logger.warning("Matchup refresh failed; retaining last display: %s", error)
+                    if previous_week != display_week:
+                        celebrations = CelebrationQueue(touchdown_duration)
+                        rotation_elapsed = 0
+                    last_refresh_time = time.monotonic()
 
-                    matchup_data = get_team_data(display_league, display_week)
-
-                    # Rebuild screens
-                    screens = [
-                        (team1_key, team1_data, team2_key, team2_data)
-                        for matchup in matchup_data
-                        for (team1_key, team1_data), (team2_key, team2_data) in [list(matchup.items())]
-                    ]
-
-                    # Ensure offsets for any new team names
-                    for matchup in matchup_data:
-                        for side, team in matchup.items():
-                            key = f"{team['name']}_{1 if side == 'team1' else 2}"
-                            scroll_offsets.setdefault(key, 0)
-                            scroll_widths.setdefault(key, len(team['name']) * 6)
-
+                if screens and rotation_elapsed >= rotation_interval and not resumed:
+                    current_screen_index = (current_screen_index + 1) % len(screens)
+                    rotation_elapsed = 0
+                    redraw = True
+                if (now - last_scroll_time) * 1000 >= SCROLL_STEP_MS:
+                    for key in scroll_offsets:
+                        overflow = max(0, scroll_widths.get(key, 46) - 46)
+                        period = max(1, overflow * 2)
+                        scroll_offsets[key] = (scroll_offsets[key] + 1) % period
+                    last_scroll_time = now
+                if redraw or now - last_frame_time >= SCROLL_STEP_MS / 1000:
                     if screens:
-                        # Wrap current screen index safely
-                        current_screen_index %= len(screens)
+                        canvas.Clear()
+                        team1, team2 = screens[current_screen_index]
+                        canvas = draw_matchup(canvas, team1, team2, black)
+                        canvas = matrix.SwapOnVSync(canvas)
                     else:
-                        current_screen_index = 0
-                        logger.info("No matchups are scheduled for week %s", display_week)
                         canvas = draw_empty_screen(canvas)
-                    last_refresh_time = current_time
-
-                # Small sleep to reduce CPU usage
+                    last_frame_time = now
                 time.sleep(0.05)
-
         except KeyboardInterrupt:
             sys.exit(0)
+        finally:
+            if monitor is not None:
+                monitor.close()
 
     # Start displaying scores
     display_scores(canvas, my_league)
