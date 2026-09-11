@@ -13,7 +13,7 @@ fi
 cd "$PROJECT_DIR"
 python3 -m venv --system-site-packages .venv
 .venv/bin/pip install -r requirements-pi.txt
-chmod +x scripts/fantasy-board-mode scripts/install_pi_service.sh
+chmod +x scripts/fantasy-board-mode scripts/run-physical-scoreboard scripts/install_pi_service.sh
 sudo install -m 0644 "$SERVICE_SOURCE" "$SERVICE_DEST"
 sudo systemctl daemon-reload
 sudo systemd-analyze verify "$SERVICE_DEST"

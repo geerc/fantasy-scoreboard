@@ -9,7 +9,7 @@ User=root
 WorkingDirectory=/home/christiangeer/fantasy-scoreboard
 Environment=PYTHONUNBUFFERED=1
 ExecStartPre=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode acquire
-ExecStart=/home/christiangeer/fantasy-scoreboard/.venv/bin/python main.py --layout diagonal
+ExecStart=/home/christiangeer/fantasy-scoreboard/scripts/run-physical-scoreboard
 ExecStopPost=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode release
 Restart=no
 TimeoutStopSec=15

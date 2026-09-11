@@ -191,7 +191,9 @@ The Pi deployment includes a manual-only `fantasy-scoreboard.service`. It is
 disabled at boot and has no restart policy. On start, it remembers the current
 Spotify Board mode, switches that manager to `off`, stops `sportsmatrix.service`
 so the GPIO matrix is released, and starts this scoreboard. On stop or failure,
-it restores the previously selected Spotify Board mode.
+it restores the previously selected Spotify Board mode. While it is running, an
+existing Spotify Board sports, spotify, or off shortcut stops Fantasy Scoreboard
+and honors that newly requested mode instead of restoring the old one.
 
 Clone the project and install the service once:
 

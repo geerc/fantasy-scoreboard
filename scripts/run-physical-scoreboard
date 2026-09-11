@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+PROJECT_DIR=/home/christiangeer/fantasy-scoreboard
+CONTROL_FILE=/home/christiangeer/.spotify-board-mode
+EXTERNAL_MODE_FILE=/run/fantasy-scoreboard.external-mode
+
+control_revision() {
+    stat -c '%y' "$CONTROL_FILE" 2>/dev/null || printf 'missing\n'
+}
+
+initial_revision=$(control_revision)
+rm -f "$EXTERNAL_MODE_FILE"
+
+"$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/main.py" --layout diagonal &
+scoreboard_pid=$!
+
+stop_child() {
+    kill -TERM "$scoreboard_pid" 2>/dev/null || true
+    wait "$scoreboard_pid" 2>/dev/null || true
+}
+trap 'stop_child; exit 0' TERM INT
+
+while kill -0 "$scoreboard_pid" 2>/dev/null; do
+    current_mode=$(tr -d '[:space:]' < "$CONTROL_FILE" 2>/dev/null || printf 'auto')
+    current_revision=$(control_revision)
+    if [[ "$current_mode" != off || "$current_revision" != "$initial_revision" ]]; then
+        touch "$EXTERNAL_MODE_FILE"
+        stop_child
+        exit 0
+    fi
+    sleep 0.5
+done
+
+wait "$scoreboard_pid"
