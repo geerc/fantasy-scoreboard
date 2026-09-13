@@ -312,6 +312,11 @@ def main():
         graphics.DrawText(canvas, text_font, 2, 23, white, period_label)
         return matrix.SwapOnVSync(canvas)
 
+    def draw_score_text(canvas, x, baseline_y, color, value):
+        """Draw the 5x7 score face with a one-pixel bold overdraw."""
+        graphics.DrawText(canvas, score_font, x, baseline_y, color, value)
+        graphics.DrawText(canvas, score_font, x + 1, baseline_y, color, value)
+
     def draw_scores(canvas, team1_score, team2_score):
         left_x = 1
         baseline_y = 31
@@ -343,7 +348,7 @@ def main():
         s2_w = text_pixel_width(s2)
 
         # right-aligned x for team2 (so right-most pixel sits at panel_width - right_margin)
-        team2_x = panel_width - right_margin - s2_w
+        team2_x = panel_width - right_margin - s2_w - 1
 
         # Guard against overlap with left team; ensure minimum separation
         min_sep = 14  # minimum pixels between left score x and right score x
@@ -352,14 +357,14 @@ def main():
 
         # draw using color rules
         if team1_score > team2_score:
-            graphics.DrawText(canvas, score_font, left_x, baseline_y, green, s1)
-            graphics.DrawText(canvas, score_font, team2_x, baseline_y, red, s2)
+            draw_score_text(canvas, left_x, baseline_y, green, s1)
+            draw_score_text(canvas, team2_x, baseline_y, red, s2)
         elif team2_score > team1_score:
-            graphics.DrawText(canvas, score_font, left_x, baseline_y, red, s1)
-            graphics.DrawText(canvas, score_font, team2_x, baseline_y, green, s2)
+            draw_score_text(canvas, left_x, baseline_y, red, s1)
+            draw_score_text(canvas, team2_x, baseline_y, green, s2)
         else:
-            graphics.DrawText(canvas, score_font, left_x, baseline_y, white, s1)
-            graphics.DrawText(canvas, score_font, team2_x, baseline_y, white, s2)
+            draw_score_text(canvas, left_x, baseline_y, white, s1)
+            draw_score_text(canvas, team2_x, baseline_y, white, s2)
 
     def draw_logos(canvas, team1_logo_path, team2_logo_path):
         logo1 = preload_logo(team1_logo_path).resize((15, 15))
@@ -380,10 +385,10 @@ def main():
         color1 = green if points1 > points2 else red if points1 < points2 else white
         color2 = green if points2 > points1 else red if points2 < points1 else white
         score1, score2 = str(points1), str(points2)
-        # Scores use the same 4x6 font as names. Team 2 hugs its logo-side edge.
-        right_width = sum(text_font.CharacterWidth(ord(char)) for char in score2)
-        graphics.DrawText(canvas, text_font, 16, 7, color1, score1)
-        graphics.DrawText(canvas, text_font, 48 - right_width, 31, color2, score2)
+        # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
+        right_width = sum(score_font.CharacterWidth(ord(char)) for char in score2) + 1
+        draw_score_text(canvas, 16, 7, color1, score1)
+        draw_score_text(canvas, 48 - right_width, 31, color2, score2)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""

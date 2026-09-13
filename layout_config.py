@@ -44,7 +44,7 @@ def resolve_touchdown_settings(duration=None, poll_interval=None, config=None):
             settings = json.load(stream)
         if not isinstance(settings, dict):
             raise ValueError("Board config must be a JSON object")
-    duration = duration if duration is not None else settings.get("touchdown_duration_seconds", 7)
+    duration = duration if duration is not None else settings.get("touchdown_duration_seconds", 10)
     poll_interval = poll_interval if poll_interval is not None else settings.get("touchdown_poll_interval_seconds", 30)
     for label, value in (("touchdown duration", duration), ("touchdown poll interval", poll_interval)):
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:

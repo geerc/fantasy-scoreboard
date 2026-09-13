@@ -89,7 +89,7 @@ use complete-frame updates to avoid the previous partial-frame blinking.
 ## Touchdown celebrations
 
 Both layouts interrupt the current matchup for **new starter touchdowns and 50+ yard big plays**.
-Each celebration defaults to seven seconds. Touchdowns alternate yellow and orange
+Each celebration defaults to ten seconds. Touchdowns alternate yellow and orange
 `TOUCHDOWN` text for the first half, then show the team-colored player name and
 `XX YD TOUCHDOWN`. Big plays show the team-colored player name and
 `XX YD RECEPTION` or `XX YD RUSH` for the full animation. The bottom 16 pixels play `assets/touchdown_runner.gif`, a
@@ -112,7 +112,7 @@ Supported events:
 ```json
 {
   "layout": "classic",
-  "touchdown_duration_seconds": 7,
+  "touchdown_duration_seconds": 10,
   "touchdown_poll_interval_seconds": 30
 }
 ```

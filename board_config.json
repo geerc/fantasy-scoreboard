@@ -1,5 +1,5 @@
 {
   "layout": "classic",
-  "touchdown_duration_seconds": 7,
+  "touchdown_duration_seconds": 10,
   "touchdown_poll_interval_seconds": 30
 }

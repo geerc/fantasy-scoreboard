@@ -85,10 +85,13 @@ class LayoutTests(unittest.TestCase):
         self.assertTrue(all(ImageChops.difference(first, c.args[0]).getbbox() is None
                             for c in calls[6::4]))
         text_calls = graphics.DrawText.call_args_list
-        for left, right in zip(text_calls[::2], text_calls[1::2]):
+        for index in range(0, len(text_calls), 4):
+            left, left_bold, right, right_bold = text_calls[index:index + 4]
             self.assertEqual(left.args[2:4], (16, 7))
+            self.assertEqual(left_bold.args[2], left.args[2] + 1)
             self.assertEqual(right.args[3], 31)
-            self.assertEqual(right.args[2] + len(right.args[5]) * 5, 48)
+            self.assertEqual(right_bold.args[2], right.args[2] + 1)
+            self.assertEqual(right_bold.args[2] + len(right.args[5]) * 5, 48)
             self.assertIs(left.args[1], right.args[1])
         matrix.SetImage.assert_not_called()
 
