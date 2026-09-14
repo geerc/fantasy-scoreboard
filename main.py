@@ -443,9 +443,9 @@ def main():
         draw_score_text(canvas, left_x, 7, color1, score1)
         draw_score_text(canvas, right_x, 31, color2, score2)
         if median is not None and points1 > median:
-            canvas.SetImage(median_medal, left_x + left_width + 1, 0, False)
+            canvas.SetImage(median_medal, left_x + left_width, 1, False)
         if median is not None and points2 > median:
-            canvas.SetImage(median_medal, right_x - 9, 24, False)
+            canvas.SetImage(median_medal, right_x - 8, 25, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
