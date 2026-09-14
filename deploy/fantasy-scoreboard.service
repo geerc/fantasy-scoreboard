@@ -8,9 +8,7 @@ Type=simple
 User=root
 WorkingDirectory=/home/christiangeer/fantasy-scoreboard
 Environment=PYTHONUNBUFFERED=1
-ExecStartPre=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode acquire
 ExecStart=/home/christiangeer/fantasy-scoreboard/scripts/run-physical-scoreboard
-ExecStopPost=/home/christiangeer/fantasy-scoreboard/scripts/fantasy-board-mode release
 Restart=no
 TimeoutStopSec=15
 
