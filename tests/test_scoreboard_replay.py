@@ -19,6 +19,7 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(self.fixture["week"], 8)
         self.assertEqual(len(self.fixture["matchups"]), 10)
         self.assertEqual(self.fixture["matchups"][0]["points"], 139.94)
+        self.assertEqual(self.fixture["live_projections"]["1"], 148.7)
 
     def test_adapter_returns_independent_copies(self):
         league = replay.FixtureLeague(self.fixture)
@@ -75,6 +76,7 @@ class ReplayTests(unittest.TestCase):
         rendered_text = [call.args[5] for call in graphics.DrawText.call_args_list]
         self.assertIn("139.94", rendered_text)
         self.assertIn("171.42", rendered_text)
+        self.assertIn("P148.7", rendered_text)
         self.assertGreater(matrix.SwapOnVSync.call_count, 5)
 
     def test_empty_preseason_screen(self):

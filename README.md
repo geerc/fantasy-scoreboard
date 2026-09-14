@@ -166,6 +166,26 @@ play-by-play. Each snapshot documents its expected new events. Use
 Regenerate the original pixel-art GIF with `venv/bin/python touchdown_animation.py`.
 Run all offline checks with `venv/bin/python -m unittest discover -s tests -v`.
 
+## Live projected scores
+
+Matchup screens alternate every three seconds between actual scores and estimated
+final scores. Projected values are prefixed with `P` so they cannot be confused
+with live points. The estimate combines Sleeper's weekly starter projections and
+current fantasy points with ESPN's game state:
+
+- not started: the full pregame projection;
+- in progress: actual points plus the pregame expectation for the fraction of
+  regulation time remaining;
+- final or overtime: actual points;
+- unavailable game state: the greater of actual and pregame projected points.
+
+The calculation selects Sleeper's standard, half-PPR, or PPR projection based on
+the league's reception scoring. Other custom bonuses are not currently modeled.
+Projection failures retain the last successful totals and never interrupt live
+score or celebration rendering. Live projection inputs poll on the same default
+25-second interval as matchup scores; weekly pregame projections and the player
+catalogue are cached for the process.
+
 ## Physical LED board
 
 Physical-board mode requires a Raspberry Pi configured with a 64x32 RGB LED
