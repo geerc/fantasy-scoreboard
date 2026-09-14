@@ -46,6 +46,13 @@ class EspnAdapterTests(unittest.TestCase):
     def test_stable_user_ids_are_platform_specific(self):
         users = {"me": UserIdentity("me", "Christian", "12", "{ME}")}
         self.assertEqual(selected_owner_ids(self.adapter.config, users), {"{ME}"})
+        self.assertIsNone(selected_owner_ids(self.adapter.config, users, True))
+
+    def test_per_league_scope_overrides_global_scope(self):
+        users = {"me": UserIdentity("me", "Christian", "12", "{ME}")}
+        config = LeagueConfig("espn", "espn", "55", "ESPN", ("me",),
+                              2026, None, None, False)
+        self.assertEqual(selected_owner_ids(config, users, True), {"{ME}"})
 
 
 if __name__ == "__main__":

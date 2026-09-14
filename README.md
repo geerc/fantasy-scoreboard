@@ -48,8 +48,9 @@ five seconds.
 
 The top-level `users` registry maps readable keys to stable Sleeper user IDs
 and/or ESPN member IDs. Set `default_display_users` to show only matchups
-involving those users by default. A league can override it with
-`"display_users": ["christian"]`, or use an empty list to show every matchup.
+involving those users by default. Set the global `"show_all_matchups": false`
+to use that filter, or `true` to show every matchup. A league can override both
+with `"display_users": ["christian"]` and its own `"show_all_matchups"` value.
 This filter does not decide celebration ownership: all configured users remain
 eligible for cross-league attribution.
 

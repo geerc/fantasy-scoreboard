@@ -25,6 +25,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
                 "users": {"me": {"label": "Me", "sleeper_user_id": 12,
                                    "espn_owner_id": "{ABC}"}},
                 "default_display_users": ["me"],
+                "show_all_matchups": False,
                 "show_league_pages": False,
                 "espn_credentials": {"home": {"swid_env": "MY_SWID",
                                                  "espn_s2_env": "MY_ESPN_S2"}},
@@ -33,12 +34,14 @@ class MultiLeagueConfigTests(unittest.TestCase):
                      "label": "One"},
                     {"key": "two", "platform": "espn", "league_id": "456",
                      "credentials": "home", "display_users": [],
-                     "show_league_page": True},
+                     "show_league_page": True, "show_all_matchups": True},
                 ],
             }))
         self.assertEqual(config.leagues[0].display_users, ("me",))
         self.assertEqual(config.leagues[1].display_users, ())
         self.assertTrue(config.leagues[1].show_league_page)
+        self.assertFalse(config.show_all_matchups)
+        self.assertTrue(config.leagues[1].show_all_matchups)
         self.assertFalse(config.show_league_pages)
         with patch.dict(os.environ, {"MY_SWID": "{ABC}", "MY_ESPN_S2": "secret"}):
             self.assertEqual(config.credentials["home"].cookies(), {
@@ -49,6 +52,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
             ({"default_display_users": ["missing"]}, "unknown users"),
             ({"show_league_pages": "yes"}, "true or false"),
             ({"league_page_seconds": 0}, "positive number"),
+            ({"show_all_matchups": "yes"}, "true or false"),
         )
         for change, message in changes:
             with self.subTest(change=change), tempfile.TemporaryDirectory() as folder:

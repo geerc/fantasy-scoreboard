@@ -162,8 +162,13 @@ def create_league_adapter(config, credential_profiles=None, session=None):
     return EspnLeagueAdapter(config, credential_profiles, session)
 
 
-def selected_owner_ids(league, users):
+def selected_owner_ids(league, users, global_show_all=None):
     """Translate config user keys into platform-specific stable owner IDs."""
+    show_all = (league.show_all_matchups if league.show_all_matchups is not None
+                else global_show_all)
+    # Backward compatibility: an omitted scope with no display users meant all.
+    if show_all is True or (show_all is None and not league.display_users):
+        return None
     field = "sleeper_user_id" if league.platform == "sleeper" else "espn_owner_id"
     return {getattr(users[key], field) for key in league.display_users
             if getattr(users[key], field)}

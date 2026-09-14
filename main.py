@@ -306,8 +306,9 @@ def main():
             # Retrieve details for each team
             team1_details = roster_map[team1["roster_id"]]
             team2_details = roster_map[team2["roster_id"]]
-            if allowed_owner_ids and not ({team1_details['owner_id'], team2_details['owner_id']}
-                                          & set(allowed_owner_ids)):
+            if (allowed_owner_ids is not None and
+                    not ({team1_details['owner_id'], team2_details['owner_id']}
+                         & set(allowed_owner_ids))):
                 continue
 
             # Determine logo file names using owner_id
@@ -613,7 +614,8 @@ def main():
         try:
             for league_config in settings.leagues:
                 adapter = create_league_adapter(league_config, settings.credentials)
-                owners = selected_owner_ids(league_config, settings.users)
+                owners = selected_owner_ids(
+                    league_config, settings.users, settings.show_all_matchups)
                 runtime = {"config": league_config, "adapter": adapter,
                            "owners": owners, "matchups": [], "projections": {},
                            "median_enabled": False}

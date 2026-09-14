@@ -3,6 +3,7 @@
   "touchdown_duration_seconds": 10,
   "show_league_pages": true,
   "league_page_seconds": 5,
+  "show_all_matchups": false,
   "default_display_users": ["christian"],
   "users": {
     "christian": {
@@ -31,6 +32,7 @@
       "label": "ESPN LEAGUE",
       "season": 2026,
       "show_league_page": false,
+      "show_all_matchups": true,
       "display_users": []
     },
     {

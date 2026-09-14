@@ -40,6 +40,7 @@ class LeagueConfig:
     season: int = None
     credentials: str = None
     show_league_page: bool = None
+    show_all_matchups: bool = None
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class MultiLeagueConfig:
     credentials: dict
     show_league_pages: bool = True
     league_page_seconds: float = 5.0
+    show_all_matchups: bool = None
 
 
 def _string(value, path):
@@ -100,6 +102,9 @@ def load_multi_league_config(path):
     default_users = raw.get("default_display_users")
     if default_users is not None and not isinstance(default_users, list):
         raise ValueError("default_display_users must be a list")
+    show_all = raw.get("show_all_matchups")
+    if show_all is not None and not isinstance(show_all, bool):
+        raise ValueError("show_all_matchups must be true or false")
     raw_leagues = raw.get("leagues")
     if not isinstance(raw_leagues, list) or not raw_leagues:
         raise ValueError("leagues must be a non-empty list")
@@ -137,10 +142,17 @@ def load_multi_league_config(path):
         league_page = value.get("show_league_page")
         if league_page is not None and not isinstance(league_page, bool):
             raise ValueError(f"{path_name}.show_league_page must be true or false")
+        league_show_all = value.get("show_all_matchups")
+        if league_show_all is not None and not isinstance(league_show_all, bool):
+            raise ValueError(f"{path_name}.show_all_matchups must be true or false")
+        effective_show_all = league_show_all if league_show_all is not None else show_all
+        if effective_show_all is False and not selected_users:
+            raise ValueError(
+                f"{path_name} needs display_users when show_all_matchups is false")
         leagues.append(LeagueConfig(
             key, platform, _string(value.get("league_id"), f"{path_name}.league_id"),
             _string(value.get("label", key), f"{path_name}.label"),
-            selected_users, season, credential_key, league_page))
+            selected_users, season, credential_key, league_page, league_show_all))
 
     show_pages = raw.get("show_league_pages", True)
     if not isinstance(show_pages, bool):
@@ -150,4 +162,4 @@ def load_multi_league_config(path):
             or page_seconds <= 0):
         raise ValueError("league_page_seconds must be a positive number")
     return MultiLeagueConfig(
-        users, tuple(leagues), credentials, show_pages, float(page_seconds))
+        users, tuple(leagues), credentials, show_pages, float(page_seconds), show_all)
