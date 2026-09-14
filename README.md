@@ -187,7 +187,7 @@ score or celebration rendering. Live projection inputs poll on the same default
 catalogue are cached for the process.
 
 When Sleeper's **Extra Game Each Week Against League Median** setting is enabled,
-the diagonal layout places a small gold medal two pixels outside each score for
+the diagonal layout places a small gold circle one pixel outside each score for
 teams projected strictly above the league median. The live median is calculated
 from all projected team totals and updates with the same 25-second projection
 refresh. A team exactly at the median does not receive a medal.
@@ -220,12 +220,10 @@ sudo make install-python
 ### Manual service alongside Spotify Board
 
 The Pi deployment includes a manual-only `fantasy-scoreboard.service`. It is
-disabled at boot and has no restart policy. On start, it remembers the current
-Spotify Board mode, switches that manager to `off`, stops `sportsmatrix.service`
-so the GPIO matrix is released, and starts this scoreboard. On stop or failure,
-it restores the previously selected Spotify Board mode. While it is running, an
-existing Spotify Board sports, spotify, or off shortcut stops Fantasy Scoreboard
-and honors that newly requested mode instead of restoring the old one.
+disabled at boot and has no restart policy. The Spotify Board manager is the sole
+owner of display switching: its `fantasy` mode stops Spotify and Sportsmatrix
+before starting this service, while its other modes stop this service before
+starting another display.
 
 Clone the project and install the service once:
 
@@ -236,20 +234,20 @@ cd /home/christiangeer/fantasy-scoreboard
 ./scripts/install_pi_service.sh
 ```
 
-Pull future versions while the service is stopped, then start it again:
+Pull future versions while the service is stopped, then select Fantasy mode:
 
 ```bash
 sudo systemctl stop fantasy-scoreboard.service
 cd /home/christiangeer/fantasy-scoreboard
 git pull --ff-only
-sudo systemctl start fantasy-scoreboard.service
+/home/christiangeer/spotify_board/.venv/bin/spotify-board-control fantasy
 ```
 
 Manual controls (also suitable for iOS **Run Script over SSH** actions):
 
 ```bash
-sudo systemctl start fantasy-scoreboard.service
-sudo systemctl stop fantasy-scoreboard.service
+/home/christiangeer/spotify_board/.venv/bin/spotify-board-control fantasy
+/home/christiangeer/spotify_board/.venv/bin/spotify-board-control off
 systemctl is-active fantasy-scoreboard.service
 journalctl -u fantasy-scoreboard.service -f
 ```

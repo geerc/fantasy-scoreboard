@@ -183,22 +183,15 @@ def main():
     logo_sources = {}
 
     def medal_image():
-        """Create a tiny 8x8 medal suited to the 64x32 pixel matrix."""
+        """Create a tiny gold circle suited to the 64x32 pixel matrix."""
         medal = Image.new("RGB", (8, 8), (0, 0, 0))
         pixels = medal.load()
-        blue = (35, 95, 220)
-        red = (220, 45, 35)
         gold = (255, 190, 0)
         light_gold = (255, 230, 70)
-        for x, y, color in (
-                (1, 0, blue), (2, 0, blue), (5, 0, red), (6, 0, red),
-                (2, 1, blue), (3, 1, blue), (4, 1, red), (5, 1, red),
-                (3, 2, blue), (4, 2, red)):
-            pixels[x, y] = color
-        for y, span in ((3, (2, 5)), (4, (1, 6)), (5, (1, 6)),
-                        (6, (1, 6)), (7, (2, 5))):
+        for y, span in ((1, (2, 5)), (2, (1, 6)), (3, (1, 6)),
+                        (4, (1, 6)), (5, (2, 5))):
             for x in range(span[0], span[1] + 1):
-                pixels[x, y] = light_gold if (x, y) in ((3, 4), (2, 5)) else gold
+                pixels[x, y] = light_gold if (x, y) in ((3, 2), (2, 3)) else gold
         return medal
 
     median_medal = medal_image()
@@ -450,9 +443,9 @@ def main():
         draw_score_text(canvas, left_x, 7, color1, score1)
         draw_score_text(canvas, right_x, 31, color2, score2)
         if median is not None and points1 > median:
-            canvas.SetImage(median_medal, left_x + left_width + 2, 0, False)
+            canvas.SetImage(median_medal, left_x + left_width + 1, 0, False)
         if median is not None and points2 > median:
-            canvas.SetImage(median_medal, right_x - 10, 24, False)
+            canvas.SetImage(median_medal, right_x - 9, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
