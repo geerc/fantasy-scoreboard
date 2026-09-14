@@ -12,6 +12,17 @@ ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/sc
 LOG = logging.getLogger("fantasy_led.projections")
 
 
+def league_median(totals):
+    """Return the midpoint of the league's two middle team totals."""
+    values = sorted(float(value) for value in totals.values())
+    if len(values) < 2:
+        return None
+    middle = len(values) // 2
+    if len(values) % 2:
+        return values[middle]
+    return (values[middle - 1] + values[middle]) / 2
+
+
 def get_json(url, **params):
     response = requests.get(url, params=params or None, timeout=10)
     response.raise_for_status()
@@ -132,7 +143,12 @@ class SleeperEspnProjectionSource:
         totals = calculate_team_projections(
             matchups, selected_players, self.projections, team_games,
             self.league.get("scoring_settings") or {})
-        return {"context": [self.league_id, season, season_type, week], "totals": totals}
+        return {
+            "context": [self.league_id, season, season_type, week],
+            "totals": totals,
+            "median_enabled": bool(
+                (self.league.get("settings") or {}).get("league_average_match")),
+        }
 
 
 class LiveProjectionMonitor:
@@ -143,6 +159,7 @@ class LiveProjectionMonitor:
         self.stop = Event()
         self.results = Queue()
         self.latest = {}
+        self.median_enabled = False
         self.version = 0
         self.worker = Thread(target=self._run, name="projection-poller", daemon=True)
         self.worker.start()
@@ -165,6 +182,7 @@ class LiveProjectionMonitor:
                 break
             if snapshot["context"][-1] == week:
                 self.latest = snapshot["totals"]
+                self.median_enabled = snapshot.get("median_enabled", False)
                 self.version += 1
         return self.latest, self.version
 
@@ -174,8 +192,9 @@ class LiveProjectionMonitor:
 
 class ReplayProjectionMonitor:
     """Offline monitor with deterministic roster totals supplied by a fixture."""
-    def __init__(self, totals=None):
+    def __init__(self, totals=None, median_enabled=False):
         self.latest = {str(key): value for key, value in (totals or {}).items()}
+        self.median_enabled = median_enabled
         self.delivered = False
 
     def totals(self, week):

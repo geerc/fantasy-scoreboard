@@ -186,6 +186,12 @@ score or celebration rendering. Live projection inputs poll on the same default
 25-second interval as matchup scores; weekly pregame projections and the player
 catalogue are cached for the process.
 
+When Sleeper's **Extra Game Each Week Against League Median** setting is enabled,
+the diagonal layout places a small gold medal two pixels outside each score for
+teams projected strictly above the league median. The live median is calculated
+from all projected team totals and updates with the same 25-second projection
+refresh. A team exactly at the median does not receive a medal.
+
 Team logos prefer a custom URL in Sleeper league metadata and fall back to the
 user's standard Sleeper avatar. Logos download once at process startup, are
 checked for a changed source URL every 25-second matchup refresh, and download

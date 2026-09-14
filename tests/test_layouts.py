@@ -1,4 +1,5 @@
 import argparse
+from copy import deepcopy
 import json
 from pathlib import Path
 import tempfile
@@ -70,6 +71,18 @@ class LayoutTests(unittest.TestCase):
             for call in calls[side_index::4]:
                 self.assertIsNone(ImageChops.difference(first, call.args[0]).getbbox())
         matrix.SetImage.assert_not_called()
+
+    def test_diagonal_shows_median_medals_in_opposite_corners(self):
+        replay = test_scoreboard_replay.ReplayTests()
+        replay.setUp()
+        fixture = deepcopy(replay.fixture)
+        fixture["league_average_match"] = True
+        _, matrix = replay.render_headless(
+            fixture, layout="diagonal", rotation_interval=1)
+        positions = [call.args[1:3]
+                     for call in matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
+        self.assertIn((44, 0), positions)
+        self.assertIn((12, 24), positions)
 
     def test_diagonal_positions_scrolling_and_score_alignment(self):
         graphics, matrix = self.render("diagonal")

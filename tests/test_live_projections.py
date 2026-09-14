@@ -1,12 +1,17 @@
 import unittest
 
 from live_projections import (calculate_team_projections, clock_seconds,
-                              projected_final, projection_field,
+                              league_median, projected_final, projection_field,
                               remaining_fraction)
 from main import user_avatar_url
 
 
 class LiveProjectionTests(unittest.TestCase):
+    def test_league_median_averages_middle_scores(self):
+        self.assertEqual(league_median({"1": 90, "2": 120, "3": 100, "4": 80}), 95)
+        self.assertEqual(league_median({"1": 90, "2": 120, "3": 100}), 100)
+        self.assertIsNone(league_median({"1": 90}))
+
     def test_avatar_url_prefers_custom_logo_then_standard_avatar(self):
         self.assertEqual(user_avatar_url({
             "avatar": "profile", "metadata": {"avatar": "https://custom/logo.jpg"}

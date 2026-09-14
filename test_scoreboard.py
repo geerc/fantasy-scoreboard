@@ -90,7 +90,8 @@ def run_replay(fixture, rotation_interval=5, data_refresh_interval=60, layout=No
                              return_value=ReplayTouchdownMonitor(touchdown_scenario)), \
                 patch.object(scoreboard, "LiveProjectionMonitor",
                              return_value=ReplayProjectionMonitor(
-                                 fixture.get("live_projections"))), \
+                                 fixture.get("live_projections"),
+                                 fixture.get("league_average_match", False))), \
                 patch.object(scoreboard, "get_current_nfl_state",
                              return_value=(fixture["week"], fixture["season_type"])), \
                 patch("requests.sessions.Session.request",

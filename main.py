@@ -12,7 +12,7 @@ from layout_config import (add_layout_arguments, resolve_layout,
 from touchdowns import CelebrationQueue
 from touchdown_source import create_touchdown_monitor
 from touchdown_animation import CelebrationRenderer
-from live_projections import LiveProjectionMonitor
+from live_projections import LiveProjectionMonitor, league_median
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
@@ -182,6 +182,27 @@ def main():
     logo_cache = {}
     logo_sources = {}
 
+    def medal_image():
+        """Create a tiny 8x8 medal suited to the 64x32 pixel matrix."""
+        medal = Image.new("RGB", (8, 8), (0, 0, 0))
+        pixels = medal.load()
+        blue = (35, 95, 220)
+        red = (220, 45, 35)
+        gold = (255, 190, 0)
+        light_gold = (255, 230, 70)
+        for x, y, color in (
+                (1, 0, blue), (2, 0, blue), (5, 0, red), (6, 0, red),
+                (2, 1, blue), (3, 1, blue), (4, 1, red), (5, 1, red),
+                (3, 2, blue), (4, 2, red)):
+            pixels[x, y] = color
+        for y, span in ((3, (2, 5)), (4, (1, 6)), (5, (1, 6)),
+                        (6, (1, 6)), (7, (2, 5))):
+            for x in range(span[0], span[1] + 1):
+                pixels[x, y] = light_gold if (x, y) in ((3, 4), (2, 5)) else gold
+        return medal
+
+    median_medal = medal_image()
+
     def preload_logo(path: str):
         if path in logo_cache:
             return logo_cache[path]
@@ -310,10 +331,11 @@ def main():
 
         return detailed_matchups
 
-    def draw_matchup(canvas, team1_data, team2_data, bg_color, show_projection=False):
+    def draw_matchup(canvas, team1_data, team2_data, bg_color, show_projection=False,
+                     median=None):
         # Compose the entire frame offscreen; only SwapOnVSync publishes it.
         if layout == "diagonal":
-            draw_diagonal(canvas, team1_data, team2_data, show_projection)
+            draw_diagonal(canvas, team1_data, team2_data, show_projection, median)
         else:
             draw_logos(canvas, team1_data['logo'], team2_data['logo'])
             canvas.SetImage(name_renderer.team_window(team1_data.get('name'), 30), 1, 17, False)
@@ -403,7 +425,7 @@ def main():
         canvas.SetImage(logo1, 1, 1, False)
         canvas.SetImage(logo2, 48, 1, False)
 
-    def draw_diagonal(canvas, team1, team2, show_projection=False):
+    def draw_diagonal(canvas, team1, team2, show_projection=False, median=None):
         # Mirrored two-row team blocks with two-pixel outer margins and gaps.
         canvas.SetImage(preload_logo(team1['logo']).resize((12, 12)), 2, 2, False)
         canvas.SetImage(preload_logo(team2['logo']).resize((12, 12)), 50, 18, False)
@@ -421,9 +443,16 @@ def main():
         score1 = display_points(team1, show_projection)
         score2 = display_points(team2, show_projection)
         # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
+        left_width = sum(score_font.CharacterWidth(ord(char)) for char in score1) + 1
         right_width = sum(score_font.CharacterWidth(ord(char)) for char in score2) + 1
-        draw_score_text(canvas, 16, 7, color1, score1)
-        draw_score_text(canvas, 48 - right_width, 31, color2, score2)
+        left_x = 16
+        right_x = 48 - right_width
+        draw_score_text(canvas, left_x, 7, color1, score1)
+        draw_score_text(canvas, right_x, 31, color2, score2)
+        if median is not None and points1 > median:
+            canvas.SetImage(median_medal, left_x + left_width + 2, 0, False)
+        if median is not None and points2 > median:
+            canvas.SetImage(median_medal, right_x - 10, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
@@ -528,8 +557,12 @@ def main():
                         canvas.Clear()
                         team1, team2 = screens[current_screen_index]
                         show_projection = bool(projection_totals)
+                        median = None
+                        if (show_projection and
+                                getattr(projection_monitor, "median_enabled", False)):
+                            median = league_median(projection_totals)
                         canvas = draw_matchup(
-                            canvas, team1, team2, black, show_projection)
+                            canvas, team1, team2, black, show_projection, median)
                         canvas = matrix.SwapOnVSync(canvas)
                     else:
                         canvas = draw_empty_screen(canvas)
