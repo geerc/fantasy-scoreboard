@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import logging
+from io import BytesIO
 from PIL import Image
 from sleeper_wrapper import League
 from name_scroll import NameRenderer
@@ -25,6 +26,25 @@ DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
 DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "25"))
 SLEEPER_NFL_STATE_URL = "https://api.sleeper.app/v1/state/nfl"
+
+
+def open_logo_or_default(path, default_path):
+    """Load a logo safely, falling back to a default or blank image."""
+    for candidate in dict.fromkeys((path, default_path)):
+        if not candidate:
+            continue
+        try:
+            with Image.open(candidate) as source:
+                return source.convert("RGB").copy()
+        except (OSError, ValueError):
+            continue
+    return Image.new("RGB", (20, 20), (0, 0, 0))
+
+
+def decode_logo(content):
+    """Validate downloaded bytes before they replace a cached logo."""
+    with Image.open(BytesIO(content)) as source:
+        return source.convert("RGB").copy()
 
 
 def user_avatar_url(user):
@@ -183,6 +203,7 @@ def main():
     # Create the 'logos' directory in the current working directory
     logos_dir = os.path.join(os.getcwd(), "logos")  # Constructs the path for 'logos' in the current directory
     os.makedirs(logos_dir, exist_ok=True)  # Creates the directory if it doesn't already exist
+    default_logo_path = os.path.join(logos_dir, "default.jpg")
 
     # Logo cache (PIL Image objects)
     logo_cache = {}
@@ -205,18 +226,9 @@ def main():
     def preload_logo(path: str):
         if path in logo_cache:
             return logo_cache[path]
-        try:
-            img = Image.open(path).convert("RGB")
-            img = img.resize((20, 20))
-            logo_cache[path] = img
-            logger.debug(f"Preloaded logo: {path}")
-            return img
-        except Exception:
-            logger.exception(f"Failed to preload logo {path}. Using default.")
-            # ensure default is cached
-            if default_logo_path not in logo_cache:
-                preload_logo(default_logo_path)
-            return logo_cache.get(default_logo_path)
+        img = open_logo_or_default(path, default_logo_path).resize((20, 20))
+        logo_cache[path] = img
+        return img
 
     def get_team_data(data_league, week, allowed_owner_ids=None, logo_namespace=""):
         """Retrieve detailed team data for each matchup."""
@@ -242,9 +254,8 @@ def main():
                     response = requests.get(logo_url, timeout=10)
                     response.raise_for_status()  # Raise exception for HTTP errors
 
-                    # Save the image to the 'logos' directory
-                    with open(file_path, "wb") as logo_file:
-                        logo_file.write(response.content)
+                    # Validate and normalize it before replacing the cache file.
+                    decode_logo(response.content).save(file_path, "PNG")
                     logo_sources[logo_key] = logo_url
                     logo_cache.pop(file_path, None)
                     print(f"Downloaded logo for user {user_id} to {file_path}")

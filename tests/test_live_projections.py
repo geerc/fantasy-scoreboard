@@ -1,9 +1,14 @@
+from io import BytesIO
+from pathlib import Path
+import tempfile
 import unittest
+
+from PIL import Image
 
 from live_projections import (calculate_team_projections, clock_seconds,
                               league_median, projected_final, projection_field,
                               remaining_fraction)
-from main import user_avatar_url
+from main import decode_logo, open_logo_or_default, user_avatar_url
 
 
 class LiveProjectionTests(unittest.TestCase):
@@ -19,6 +24,25 @@ class LiveProjectionTests(unittest.TestCase):
         self.assertEqual(user_avatar_url({"avatar": "profile", "metadata": {}}),
                          "https://sleepercdn.com/avatars/profile")
         self.assertIsNone(user_avatar_url({"avatar": None, "metadata": None}))
+
+    def test_invalid_logo_falls_back_without_crashing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            invalid = folder / "invalid.png"
+            invalid.write_text("not an image")
+            fallback = folder / "default.jpg"
+            Image.new("RGB", (4, 4), (12, 34, 56)).save(fallback, "PNG")
+            loaded = open_logo_or_default(invalid, fallback)
+            self.assertEqual(loaded.getpixel((0, 0)), (12, 34, 56))
+            missing = open_logo_or_default(invalid, folder / "missing.jpg")
+            self.assertEqual(missing.size, (20, 20))
+
+    def test_downloaded_logo_bytes_are_validated(self):
+        content = BytesIO()
+        Image.new("RGB", (3, 3), (1, 2, 3)).save(content, "PNG")
+        self.assertEqual(decode_logo(content.getvalue()).getpixel((0, 0)), (1, 2, 3))
+        with self.assertRaises(OSError):
+            decode_logo(b"not an image")
 
     def test_clock_and_remaining_regulation_fraction(self):
         self.assertEqual(clock_seconds("12:34"), 754)
