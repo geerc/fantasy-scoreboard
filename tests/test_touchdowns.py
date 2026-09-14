@@ -191,6 +191,25 @@ class DetectorTests(unittest.TestCase):
         later["stats"] = initial["stats"]
         self.assertEqual([e.player_id for e in detector.observe(later)], ["HOU", "PIT"])
 
+    def test_espn_numeric_dst_id_uses_player_team_mapping(self):
+        detector = TouchdownDetector()
+        base = {"context": ["espn", "league", 2026, 1], "starters": ["999"],
+                "players": {"999": {"full_name": "Seattle D/ST", "position": "DEF",
+                                      "team": "SEA"}},
+                "stats": None, "games": [{"id": "game", "plays": []}],
+                "play_by_play_ready": True, "team_colors": {"SEA": "#002244"},
+                "fantasy_teams": {"999": "Legion of Boom"},
+                "fantasy_owners": {"999": "{ME}"}, "fantasy_league": "espn-one"}
+        detector.observe(base)
+        current = deepcopy(base)
+        current["games"][0]["plays"] = [{
+            "id": "return", "scoringPlay": True, "statYardage": 40,
+            "type": {"text": "Interception Return Touchdown"},
+            "team": {"abbreviation": "SEA"}}]
+        events = detector.observe(current)
+        self.assertEqual([(e.player_id, e.kind, e.fantasy_owner) for e in events],
+                         [("999", "INT TOUCHDOWN", "{ME}")])
+
 
 class PlaybackTests(unittest.TestCase):
     def test_duration_queue_boundaries(self):

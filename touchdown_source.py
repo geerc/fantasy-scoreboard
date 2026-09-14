@@ -16,6 +16,7 @@ from touchdowns import TouchdownDetector, team_code
 LOG = logging.getLogger("fantasy_led.touchdowns")
 SLEEPER = "https://api.sleeper.app/v1"
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
+ESPN_FANTASY = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl"
 
 
 def get_json(url, **params):
@@ -30,6 +31,7 @@ class SleeperTouchdownSource:
         self.league = None
         self.players = None
         self.roster_names = None
+        self.roster_owners = None
 
     def poll(self, week):
         if self.league is None:
@@ -46,12 +48,17 @@ class SleeperTouchdownSource:
             self.roster_names = {str(roster["roster_id"]):
                                  user_names.get(str(roster.get("owner_id")), "Unknown Team")
                                  for roster in rosters}
+            self.roster_owners = {str(roster["roster_id"]): str(roster.get("owner_id"))
+                                  for roster in rosters}
         fantasy_teams = {}
+        fantasy_owners = {}
         for matchup in matchups:
-            team_name = self.roster_names.get(str(matchup.get("roster_id")), "Unknown Team")
+            roster_id = str(matchup.get("roster_id"))
+            team_name = self.roster_names.get(roster_id, "Unknown Team")
             for player_id in matchup.get("players", []):
                 if player_id and str(player_id) != "0":
                     fantasy_teams[str(player_id)] = team_name
+                    fantasy_owners[str(player_id)] = self.roster_owners.get(roster_id)
         starters = sorted({str(pid) for m in matchups for pid in m.get("starters", [])
                            if pid and str(pid) != "0"})
         owned_players = sorted({str(pid) for m in matchups for pid in m.get("players", [])
@@ -125,12 +132,13 @@ class SleeperTouchdownSource:
         return {"context": [self.league_id, season, season_type, week],
                 "starters": starters, "owned_players": owned_players, "players": players, "stats": stats, "games": games,
                 "team_colors": team_colors, "fantasy_teams": fantasy_teams,
+                "fantasy_owners": fantasy_owners, "fantasy_league": self.league_id,
                 "play_by_play_ready": play_by_play_ready}
 
 
 class TouchdownMonitor:
-    def __init__(self, league_id, week, interval=30):
-        self.source = SleeperTouchdownSource(league_id)
+    def __init__(self, league_id, week, interval=30, source=None):
+        self.source = source or SleeperTouchdownSource(league_id)
         self.week = week
         self.interval = interval
         self.stop = Event()
@@ -166,3 +174,104 @@ class TouchdownMonitor:
 
 def create_touchdown_monitor(league_id, week, interval=30):
     return TouchdownMonitor(league_id, week, interval)
+
+
+class EspnTouchdownSource:
+    """Use ESPN fantasy starters with ESPN's NFL play feed."""
+
+    def __init__(self, config, credential_profiles=None):
+        self.config = config
+        self.credentials = credential_profiles or {}
+
+    def _cookies(self):
+        if not self.config.credentials:
+            return None
+        return self.credentials[self.config.credentials].cookies()
+
+    def poll(self, week):
+        from datetime import datetime
+        season = self.config.season or datetime.now().year
+        url = (f"{ESPN_FANTASY}/seasons/{season}/segments/0/leagues/"
+               f"{self.config.league_id}")
+        response = requests.get(url, params=[("view", "mTeam"), ("view", "mRoster")],
+                                cookies=self._cookies(), timeout=15)
+        response.raise_for_status()
+        fantasy = response.json()
+        fantasy_teams = {}
+        fantasy_owners = {}
+        players = {}
+        starters = set()
+        for team in fantasy.get("teams") or []:
+            owner = str((team.get("owners") or [f"team:{team.get('id')}"])[0])
+            team_name = (team.get("name") or " ".join(filter(None, (
+                team.get("location"), team.get("nickname")))) or "Unknown Team")
+            entries = ((team.get("roster") or {}).get("entries") or [])
+            for entry in entries:
+                pool = entry.get("playerPoolEntry") or {}
+                player = pool.get("player") or {}
+                pid = str(player.get("id") or "")
+                if not pid:
+                    continue
+                players[pid] = {"full_name": player.get("fullName") or player.get("name") or pid,
+                                "position": "DEF" if player.get("defaultPositionId") == 16 else None,
+                                "pro_team_id": str(player.get("proTeamId") or "")}
+                fantasy_teams[pid] = team_name
+                fantasy_owners[pid] = owner
+                if entry.get("lineupSlotId") not in (20, 21):
+                    starters.add(pid)
+
+        schedule = get_json(f"{ESPN}/scoreboard", dates=season, seasontype=2,
+                            week=week, limit=100)
+        games = []
+        team_colors = {}
+        for game in schedule.get("events") or []:
+            competitors = ((game.get("competitions") or [{}])[0].get("competitors") or [])
+            team_by_id = {str(c["team"]["id"]): team_code(c["team"]["abbreviation"])
+                          for c in competitors}
+            for info in players.values():
+                if info.get("pro_team_id") in team_by_id:
+                    info["team"] = team_by_id[info["pro_team_id"]]
+            for competitor in competitors:
+                team = competitor.get("team") or {}
+                if team.get("color"):
+                    team_colors[team_code(team.get("abbreviation"))] = "#" + team["color"].lstrip("#")
+            game_id = str(game.get("id"))
+            if game.get("status", {}).get("type", {}).get("state") == "pre":
+                games.append({"id": game_id, "plays": []})
+                continue
+            try:
+                summary = get_json(f"{ESPN}/summary", event=game_id)
+            except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+                LOG.warning("ESPN play-by-play unavailable for game %s: %s", game_id, error)
+                continue
+            combined = list(summary.get("scoringPlays") or [])
+            drives = summary.get("drives") or {}
+            drive_rows = list(drives.get("previous") or [])
+            if drives.get("current"):
+                drive_rows.append(drives["current"])
+            for drive in drive_rows:
+                combined.extend(drive.get("plays") or [])
+            by_id = {}
+            for raw_play in combined:
+                play = dict(by_id.get(str(raw_play.get("id")), {}))
+                play.update(raw_play)
+                start_id = str((play.get("start") or {}).get("team", {}).get("id", ""))
+                if start_id in team_by_id:
+                    play["offenseTeam"] = team_by_id[start_id]
+                if play.get("id"):
+                    by_id[str(play["id"])] = play
+            games.append({"id": game_id, "plays": list(by_id.values())})
+        return {"context": ["espn", self.config.league_id, season, week],
+                "starters": sorted(starters), "owned_players": sorted(players),
+                "players": players, "stats": None, "games": games,
+                "team_colors": team_colors, "fantasy_teams": fantasy_teams,
+                "fantasy_owners": fantasy_owners, "fantasy_league": self.config.key,
+                "play_by_play_ready": True}
+
+
+def create_league_touchdown_monitor(config, credentials, week, interval=30):
+    if config.platform == "sleeper":
+        source = SleeperTouchdownSource(config.league_id)
+    else:
+        source = EspnTouchdownSource(config, credentials)
+    return TouchdownMonitor(config.league_id, week, interval, source)

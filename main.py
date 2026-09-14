@@ -8,11 +8,15 @@ from PIL import Image
 from sleeper_wrapper import League
 from name_scroll import NameRenderer
 from layout_config import (add_layout_arguments, resolve_layout,
-                           add_touchdown_arguments, resolve_touchdown_settings)
+                           add_touchdown_arguments, resolve_touchdown_settings,
+                           DEFAULT_CONFIG)
 from touchdowns import CelebrationQueue
-from touchdown_source import create_touchdown_monitor
+from touchdown_source import create_touchdown_monitor, create_league_touchdown_monitor
 from touchdown_animation import CelebrationRenderer
 from live_projections import LiveProjectionMonitor, league_median
+from league_adapters import create_league_adapter, selected_owner_ids
+from multi_league_config import load_multi_league_config
+from multi_league_events import CrossLeagueCelebrations
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
@@ -85,10 +89,12 @@ def main():
     add_layout_arguments(parser)
     add_touchdown_arguments(parser)
     args = parser.parse_args()
+    effective_config = args.config or (DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None)
     try:
         layout = resolve_layout(args.layout, args.config)
         touchdown_duration, touchdown_poll_interval = resolve_touchdown_settings(
             args.touchdown_duration, args.touchdown_poll_interval, args.config)
+        multi_config = load_multi_league_config(effective_config)
     except (OSError, ValueError) as error:
         parser.error(str(error))
     logger.info("Using %s board layout", layout)
@@ -152,8 +158,8 @@ def main():
         # Create the graphics canvas
         canvas = matrix.CreateFrameCanvas()
 
-    # Set up Sleeper League
-    my_league = League(league_id)
+    # Set up the legacy league only when the config has no multi-league section.
+    my_league = None if multi_config else League(league_id)
 
     # Load a font
     try:
@@ -212,7 +218,7 @@ def main():
                 preload_logo(default_logo_path)
             return logo_cache.get(default_logo_path)
 
-    def get_team_data(data_league, week):
+    def get_team_data(data_league, week, allowed_owner_ids=None, logo_namespace=""):
         """Retrieve detailed team data for each matchup."""
 
         # pull weekly matchups
@@ -226,8 +232,10 @@ def main():
             user_id = str(user["user_id"])
             logo_url = user_avatar_url(user)
             if logo_url:
-                file_path = os.path.join(logos_dir, f"{user_id}.png")
-                if logo_sources.get(user_id) == logo_url and os.path.exists(file_path):
+                safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in user_id)
+                logo_key = f"{logo_namespace}-{safe_id}" if logo_namespace else safe_id
+                file_path = os.path.join(logos_dir, f"{logo_key}.png")
+                if logo_sources.get(logo_key) == logo_url and os.path.exists(file_path):
                     continue
                 try:
                     # Fetch the image data
@@ -237,7 +245,7 @@ def main():
                     # Save the image to the 'logos' directory
                     with open(file_path, "wb") as logo_file:
                         logo_file.write(response.content)
-                    logo_sources[user_id] = logo_url
+                    logo_sources[logo_key] = logo_url
                     logo_cache.pop(file_path, None)
                     print(f"Downloaded logo for user {user_id} to {file_path}")
                 except Exception as e:
@@ -247,8 +255,8 @@ def main():
 
         # Create a map for user_id to team_name (fallback to 'display_name' if team_name is not set)
         user_map = {
-            user["user_id"]: {
-                'team_name': user['metadata'].get('team_name', user['display_name']),
+            str(user["user_id"]): {
+                'team_name': (user.get('metadata') or {}).get('team_name', user['display_name']),
                 'display_name': user['display_name'],
             }
             for user in users
@@ -257,12 +265,12 @@ def main():
         # Create a mapping of roster_id to team stats
         roster_map = {
             roster['roster_id']: {
-                'team_name': user_map.get(roster['owner_id'], {}).get('team_name', "Unknown Team"),
-                'display_name': user_map.get(roster['owner_id'], {}).get('display_name', "Unknown Owner"),
+                'team_name': user_map.get(str(roster['owner_id']), {}).get('team_name', "Unknown Team"),
+                'display_name': user_map.get(str(roster['owner_id']), {}).get('display_name', "Unknown Owner"),
                 'wins': roster['settings']['wins'],
                 'losses': roster['settings']['losses'],
                 'ties': roster['settings']['ties'],
-                'owner_id': roster['owner_id'],
+                'owner_id': str(roster['owner_id']),
             }
             for roster in rosters
         }
@@ -287,10 +295,16 @@ def main():
             # Retrieve details for each team
             team1_details = roster_map[team1["roster_id"]]
             team2_details = roster_map[team2["roster_id"]]
+            if allowed_owner_ids and not ({team1_details['owner_id'], team2_details['owner_id']}
+                                          & set(allowed_owner_ids)):
+                continue
 
             # Determine logo file names using owner_id
-            team1_logo = f"{team1_details['owner_id']}.png"
-            team2_logo = f"{team2_details['owner_id']}.png"
+            def logo_name(owner_id):
+                safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in owner_id)
+                return f"{logo_namespace}-{safe}.png" if logo_namespace else f"{safe}.png"
+            team1_logo = logo_name(team1_details['owner_id'])
+            team2_logo = logo_name(team2_details['owner_id'])
 
             # Check if the logo files exist
             team1_logo_path = os.path.join(logos_dir, team1_logo)
@@ -304,20 +318,24 @@ def main():
             detailed_matchups.append({
                 "team1": {
                     "roster_id": str(team1["roster_id"]),
+                    "owner_id": team1_details["owner_id"],
                     "name": team1_details["team_name"],
                     "wins": team1_details["wins"],
                     "losses": team1_details["losses"],
                     "ties": team1_details["ties"],
                     "points": team1["points"],
+                    "projection": team1.get("projection"),
                     "logo": team1_logo_file
                 },
                 "team2": {
                     "roster_id": str(team2["roster_id"]),
+                    "owner_id": team2_details["owner_id"],
                     "name": team2_details["team_name"],
                     "wins": team2_details["wins"],
                     "losses": team2_details["losses"],
                     "ties": team2_details["ties"],
                     "points": team2["points"],
+                    "projection": team2.get("projection"),
                     "logo": team2_logo_file
                 }
             })
@@ -343,6 +361,12 @@ def main():
         graphics.DrawText(canvas, text_font, 2, 12, white, "NO MATCHUPS")
         period_label = "PRESEASON" if season_type == "pre" else f"WEEK {display_week}"
         graphics.DrawText(canvas, text_font, 2, 23, white, period_label)
+        return matrix.SwapOnVSync(canvas)
+
+    def draw_league_page(canvas, label):
+        canvas.Clear()
+        tile = name_renderer.bitmap(label).crop((0, 0, 60, name_renderer.HEIGHT))
+        canvas.SetImage(tile, max(2, (64 - tile.width) // 2), 13, False)
         return matrix.SwapOnVSync(canvas)
 
     def draw_score_text(canvas, x, baseline_y, color, value):
@@ -569,8 +593,166 @@ def main():
             if projection_monitor is not None:
                 projection_monitor.close()
 
+    def display_multiple_leagues(canvas, settings):
+        """Rotate configured leagues while sharing one celebration queue."""
+        nonlocal display_week, season_type
+        runtimes = []
+        monitors = []
+        projection_monitors = []
+        try:
+            for league_config in settings.leagues:
+                adapter = create_league_adapter(league_config, settings.credentials)
+                owners = selected_owner_ids(league_config, settings.users)
+                runtime = {"config": league_config, "adapter": adapter,
+                           "owners": owners, "matchups": [], "projections": {},
+                           "median_enabled": False}
+                monitor = create_league_touchdown_monitor(
+                    league_config, settings.credentials, display_week,
+                    touchdown_poll_interval)
+                runtime.update(monitor=monitor)
+                monitors.append(monitor)
+                if league_config.platform == "sleeper":
+                    projection = LiveProjectionMonitor(
+                        league_config.league_id, display_week, data_refresh_interval)
+                    runtime.update(projection_monitor=projection,
+                                   projection_version=0)
+                    projection_monitors.append(projection)
+                runtimes.append(runtime)
+
+            def refresh(runtime):
+                config = runtime["config"]
+                rows = get_team_data(runtime["adapter"], display_week,
+                                     runtime["owners"], config.key)
+                if config.platform == "espn":
+                    runtime["projections"] = dict(runtime["adapter"].projections)
+                for matchup in rows:
+                    for team in matchup.values():
+                        projected = runtime["projections"].get(team["roster_id"])
+                        if projected is not None:
+                            team["projection"] = projected
+                runtime["matchups"] = rows
+
+            def screens():
+                result = []
+                for runtime in runtimes:
+                    config = runtime["config"]
+                    show_page = (config.show_league_page if config.show_league_page is not None
+                                 else settings.show_league_pages)
+                    if show_page:
+                        result.append({"kind": "league", "label": config.label,
+                                       "duration": settings.league_page_seconds})
+                    for matchup in runtime["matchups"]:
+                        result.append({"kind": "matchup", "runtime": runtime,
+                                       "team1": matchup["team1"], "team2": matchup["team2"],
+                                       "duration": rotation_interval})
+                    if not runtime["matchups"]:
+                        result.append({"kind": "empty", "runtime": runtime,
+                                       "duration": rotation_interval})
+                return result
+
+            for runtime in runtimes:
+                try:
+                    refresh(runtime)
+                except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+                    logger.warning("Initial load failed for %s: %s",
+                                   runtime["config"].label, error)
+
+            pages = screens()
+            page_index = 0
+            page_elapsed = 0
+            last_tick = time.monotonic()
+            last_refresh = last_tick
+            last_frame = last_tick - 1
+            celebrations = CelebrationQueue(touchdown_duration)
+            celebration_renderer = CelebrationRenderer(name_renderer)
+            event_merger = CrossLeagueCelebrations(settings.users)
+            was_celebrating = False
+            print("Press CTRL-C to stop.")
+            while True:
+                now = time.monotonic()
+                delta = max(0, now - last_tick)
+                last_tick = now
+                resumed = was_celebrating
+                if not was_celebrating:
+                    page_elapsed += delta
+
+                raw_events = []
+                for runtime in runtimes:
+                    monitor = runtime.get("monitor")
+                    if monitor:
+                        raw_events.extend(monitor.events(display_week, now))
+                    projection = runtime.get("projection_monitor")
+                    if projection:
+                        totals, version = projection.totals(display_week)
+                        runtime["projections"] = totals
+                        runtime["median_enabled"] = projection.median_enabled
+                        if version != runtime["projection_version"]:
+                            runtime["projection_version"] = version
+                            for matchup in runtime["matchups"]:
+                                for team in matchup.values():
+                                    team["projection"] = totals.get(team["roster_id"])
+                events = event_merger.merge(raw_events)
+                celebration = celebrations.step(now, events)
+                if celebration:
+                    event, elapsed = celebration
+                    canvas.SetImage(celebration_renderer.render(
+                        event, elapsed, touchdown_duration), 0, 0, False)
+                    canvas = matrix.SwapOnVSync(canvas)
+                    was_celebrating = True
+                    time.sleep(.05)
+                    continue
+                was_celebrating = False
+
+                redraw = resumed
+                if now - last_refresh >= data_refresh_interval:
+                    if week_is_dynamic:
+                        try:
+                            display_week, season_type = get_current_nfl_state()
+                        except (requests.RequestException, ValueError) as error:
+                            logger.warning("Could not refresh NFL state: %s", error)
+                    for runtime in runtimes:
+                        try:
+                            refresh(runtime)
+                        except (requests.RequestException, ValueError, KeyError, TypeError) as error:
+                            logger.warning("Refresh failed for %s: %s",
+                                           runtime["config"].label, error)
+                    pages = screens()
+                    page_index %= len(pages)
+                    last_refresh = time.monotonic()
+                    redraw = True
+
+                if pages and page_elapsed >= pages[page_index]["duration"] and not resumed:
+                    page_index = (page_index + 1) % len(pages)
+                    page_elapsed = 0
+                    redraw = True
+                if redraw or now - last_frame >= SCROLL_STEP_MS / 1000:
+                    page = pages[page_index]
+                    if page["kind"] == "league":
+                        canvas = draw_league_page(canvas, page["label"])
+                    elif page["kind"] == "empty":
+                        canvas = draw_empty_screen(canvas)
+                    else:
+                        runtime = page["runtime"]
+                        totals = runtime["projections"]
+                        median = (league_median(totals) if totals and
+                                  runtime["median_enabled"] else None)
+                        canvas.Clear()
+                        canvas = draw_matchup(canvas, page["team1"], page["team2"],
+                                              black, bool(totals), median)
+                        canvas = matrix.SwapOnVSync(canvas)
+                    last_frame = now
+                time.sleep(.05)
+        except KeyboardInterrupt:
+            sys.exit(0)
+        finally:
+            for monitor in monitors + projection_monitors:
+                monitor.close()
+
     # Start displaying scores
-    display_scores(canvas, my_league)
+    if multi_config:
+        display_multiple_leagues(canvas, multi_config)
+    else:
+        display_scores(canvas, my_league)
 
 if __name__ == "__main__":
     main()

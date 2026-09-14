@@ -30,6 +30,69 @@ venv/bin/python main.py --emulator \
 The same defaults can be set with `SLEEPER_LEAGUE_ID`, `DISPLAY_WEEK`,
 `ROTATION_INTERVAL`, and `DATA_REFRESH_INTERVAL` environment variables.
 
+## Multiple Sleeper and ESPN leagues
+
+Copy `board_config.multileague.example.json` and pass it with `--config`:
+
+```bash
+cp board_config.multileague.example.json board_config.multileague.json
+venv/bin/python main.py --emulator --config board_config.multileague.json
+```
+
+The `leagues` list controls display order. Each league may use `sleeper` or
+`espn`, has a stable `league_id`, and may have a short `label`. The rotation is
+league-name page, that league's matchups, then the next league. The global
+`show_league_pages` default can be overridden on a league with
+`"show_league_page": false`; `league_page_seconds` is global and defaults to
+five seconds.
+
+The top-level `users` registry maps readable keys to stable Sleeper user IDs
+and/or ESPN member IDs. Set `default_display_users` to show only matchups
+involving those users by default. A league can override it with
+`"display_users": ["christian"]`, or use an empty list to show every matchup.
+This filter does not decide celebration ownership: all configured users remain
+eligible for cross-league attribution.
+
+Sleeper IDs can be copied from Sleeper's league users API. An ESPN member ID is
+the `id` associated with the owner in the league API response (often enclosed
+in braces), not the numeric fantasy team ID. ESPN public leagues require only
+the league ID and season. For a private league, add a named credential profile:
+
+```json
+{
+  "espn_credentials": {
+    "primary": {"swid_env": "ESPN_SWID", "espn_s2_env": "ESPN_S2"}
+  },
+  "leagues": [{
+    "key": "home-espn",
+    "platform": "espn",
+    "league_id": "12345678",
+    "season": 2026,
+    "credentials": "primary"
+  }]
+}
+```
+
+Export the two named environment variables before starting the process. Their
+values come from the `SWID` and `espn_s2` cookies in a browser session signed in
+to ESPN; keep them out of JSON and Git. For the Pi service, place them in a
+root-readable systemd environment file and reference it with an
+`EnvironmentFile=` drop-in.
+
+Existing single-league CLI and `board_config.json` setups continue to work when
+the config has no `leagues` list. Sleeper leagues retain calculated live
+projections and median indicators. ESPN leagues use ESPN's live projected team
+totals and team logos; median indicators are omitted because ESPN does not
+provide the equivalent league-median result. Missing logos use the default.
+
+Touchdown and big-play monitors run for every configured league. The same NFL
+play is queued only once across leagues. One occurrence reveals its fantasy
+team; multiple occurrences owned by the same configured user reveal that user
+label; ownership by different users/teams reveals no attribution. ESPN starter
+offensive events use ESPN roster and play-by-play data. ESPN D/ST attribution
+uses the roster entry's NFL team mapping when ESPN provides it; missing provider
+metadata cannot be inferred safely.
+
 ## Offline development replay
 
 Stop the live emulator first (Control-C), then run:

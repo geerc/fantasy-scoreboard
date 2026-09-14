@@ -35,6 +35,8 @@ class Touchdown:
     play_type: str = None
     team_color: str = None
     fantasy_team: str = None
+    fantasy_owner: str = None
+    fantasy_league: str = None
 
 
 def _normalized_name(value):
@@ -125,7 +127,9 @@ class TouchdownDetector:
                                 f"{context}:{pid}:{field}:{ordinal}", pid, name, kind,
                                 team_color=snapshot.get("team_colors", {}).get(
                                     team_code(info.get("team"))),
-                                fantasy_team=snapshot.get("fantasy_teams", {}).get(pid)))
+                                fantasy_team=snapshot.get("fantasy_teams", {}).get(pid),
+                                fantasy_owner=snapshot.get("fantasy_owners", {}).get(pid),
+                                fantasy_league=snapshot.get("fantasy_league")))
                     self.counts[key] = max(previous, count)
             self.starters = starters
             self.offense_ready = True
@@ -157,9 +161,12 @@ class TouchdownDetector:
                     kind = "TOUCHDOWN" if scoring else "BIG PLAY"
                     events.append(Touchdown(f"{context}:{game_id}:{play_id}:{kind}", actor, name, kind,
                                             int(yards), "RECEPTION" if role == "receiver" else "PASS" if role == "passer" else "RUSH", color,
-                                            snapshot.get("fantasy_teams", {}).get(actor)))
+                                            snapshot.get("fantasy_teams", {}).get(actor),
+                                            snapshot.get("fantasy_owners", {}).get(actor),
+                                            snapshot.get("fantasy_league")))
 
-                pid = next((d for d in defenses if team_code(d) ==
+                pid = next((d for d in defenses if team_code(
+                            players.get(d, {}).get("team") or d) ==
                             team_code((play.get("team") or {}).get("abbreviation"))), None)
                 kind = dst_kind(play)
                 if (pid and kind and play_id and seen is not None and play_id not in seen
@@ -167,7 +174,9 @@ class TouchdownDetector:
                     events.append(Touchdown(f"{context}:{game_id}:{play_id}", pid, f"{pid} D/ST", kind,
                                             int(play.get("statYardage") or 0), None,
                                             snapshot.get("team_colors", {}).get(team_code(pid)),
-                                            snapshot.get("fantasy_teams", {}).get(pid)))
+                                            snapshot.get("fantasy_teams", {}).get(pid),
+                                            snapshot.get("fantasy_owners", {}).get(pid),
+                                            snapshot.get("fantasy_league")))
             self.games[game_id] = (seen or set()) | current_ids
         self.dst_starters = defenses
         return events
