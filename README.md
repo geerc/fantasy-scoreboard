@@ -187,7 +187,7 @@ score or celebration rendering. Live projection inputs poll on the same default
 catalogue are cached for the process.
 
 When Sleeper's **Extra Game Each Week Against League Median** setting is enabled,
-the diagonal layout places a small gold circle one pixel outside each score for
+the diagonal layout places a small gold circle two visible pixels from each score for
 teams projected strictly above the league median. The live median is calculated
 from all projected team totals and updates with the same 25-second projection
 refresh. A team exactly at the median does not receive a medal.

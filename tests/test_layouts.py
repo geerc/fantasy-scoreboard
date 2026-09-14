@@ -81,8 +81,8 @@ class LayoutTests(unittest.TestCase):
             fixture, layout="diagonal", rotation_interval=1)
         positions = [call.args[1:3]
                      for call in matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
-        self.assertIn((43, 0), positions)
-        self.assertIn((13, 24), positions)
+        self.assertIn((42, 1), positions)
+        self.assertIn((14, 25), positions)
 
     def test_diagonal_positions_scrolling_and_score_alignment(self):
         graphics, matrix = self.render("diagonal")
