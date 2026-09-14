@@ -18,9 +18,11 @@ class EspnAdapterTests(unittest.TestCase):
                  "record": {"overall": {}}},
             ],
             "schedule": [{"matchupPeriodId": 3,
-                          "home": {"teamId": 1, "totalPoints": 80.5,
+                          "home": {"teamId": 1, "totalPoints": 0,
+                                   "totalPointsLive": 80.5,
                                    "totalProjectedPointsLive": 131.2},
-                          "away": {"teamId": 2, "totalPoints": 72.1,
+                          "away": {"teamId": 2, "totalPoints": 0,
+                                   "pointsByScoringPeriod": {"3": 72.1},
                                    "totalProjectedPointsLive": 119.8}}],
         }
         response.raise_for_status.return_value = None
@@ -38,6 +40,8 @@ class EspnAdapterTests(unittest.TestCase):
                          "Sunday Scaries")
         self.assertEqual(self.adapter.get_rosters()[0]["settings"]["wins"], 2)
         self.assertEqual(self.session.get.call_args.kwargs["cookies"], None)
+        self.assertIn(("view", "mMatchupScore"),
+                      self.session.get.call_args.kwargs["params"])
 
     def test_stable_user_ids_are_platform_specific(self):
         users = {"me": UserIdentity("me", "Christian", "12", "{ME}")}

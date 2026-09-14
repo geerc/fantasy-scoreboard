@@ -53,7 +53,8 @@ class EspnLeagueAdapter:
                f"{self.config.league_id}")
         response = self.session.get(
             url, params=[("view", "mTeam"), ("view", "mMatchup"),
-                         ("view", "mRoster"), ("view", "mSettings")],
+                         ("view", "mMatchupScore"), ("view", "mRoster"),
+                         ("view", "mSettings")],
             cookies=self._cookies(), timeout=15)
         if response.status_code in (401, 403):
             raise ValueError(
@@ -117,6 +118,18 @@ class EspnLeagueAdapter:
                 return float(value)
         return None
 
+    @staticmethod
+    def _points(side, week):
+        live = side.get("totalPointsLive")
+        if isinstance(live, (int, float)):
+            return float(live)
+        by_period = side.get("pointsByScoringPeriod") or {}
+        period = by_period.get(str(week), by_period.get(week))
+        if isinstance(period, (int, float)):
+            return float(period)
+        total = side.get("totalPoints")
+        return float(total) if isinstance(total, (int, float)) else 0.0
+
     def get_matchups(self, week):
         # ESPN changes live fields in-place, so each call deliberately refreshes.
         self.snapshot = None
@@ -138,7 +151,7 @@ class EspnLeagueAdapter:
                     self.projections[team_id] = projection
                 rows.append({"matchup_id": matchup_id,
                              "roster_id": int(team_id),
-                             "points": float(side.get("totalPoints") or 0),
+                             "points": self._points(side, week),
                              "projection": projection})
         return deepcopy(rows)
 
