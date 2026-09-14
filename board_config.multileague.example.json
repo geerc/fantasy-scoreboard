@@ -1,0 +1,45 @@
+{
+  "layout": "diagonal",
+  "touchdown_duration_seconds": 10,
+  "show_league_pages": true,
+  "league_page_seconds": 5,
+  "default_display_users": ["christian"],
+  "users": {
+    "christian": {
+      "label": "Christian",
+      "sleeper_user_id": "434123445698031616",
+      "espn_owner_id": "{REPLACE-WITH-ESPN-MEMBER-ID}"
+    }
+  },
+  "espn_credentials": {
+    "primary": {
+      "swid_env": "ESPN_SWID",
+      "espn_s2_env": "ESPN_S2"
+    }
+  },
+  "leagues": [
+    {
+      "key": "sypip",
+      "platform": "sleeper",
+      "league_id": "1389341850288009216",
+      "label": "SYPIP"
+    },
+    {
+      "key": "public-espn",
+      "platform": "espn",
+      "league_id": "REPLACE-WITH-LEAGUE-ID",
+      "label": "ESPN LEAGUE",
+      "season": 2026,
+      "show_league_page": false,
+      "display_users": []
+    },
+    {
+      "key": "private-espn",
+      "platform": "espn",
+      "league_id": "REPLACE-WITH-LEAGUE-ID",
+      "label": "PRIVATE ESPN",
+      "season": 2026,
+      "credentials": "primary"
+    }
+  ]
+}
