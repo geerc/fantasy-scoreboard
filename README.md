@@ -166,6 +166,38 @@ play-by-play. Each snapshot documents its expected new events. Use
 Regenerate the original pixel-art GIF with `venv/bin/python touchdown_animation.py`.
 Run all offline checks with `venv/bin/python -m unittest discover -s tests -v`.
 
+## Live projected scores
+
+Matchup screens show estimated final scores whenever projection data is available,
+falling back to actual scores while projections load or if no projection has ever
+succeeded. The estimate combines Sleeper's weekly starter projections and current
+fantasy points with ESPN's game state:
+
+- not started: the full pregame projection;
+- in progress: actual points plus the pregame expectation for the fraction of
+  regulation time remaining;
+- final or overtime: actual points;
+- unavailable game state: the greater of actual and pregame projected points.
+
+The calculation selects Sleeper's standard, half-PPR, or PPR projection based on
+the league's reception scoring. Other custom bonuses are not currently modeled.
+Projection failures retain the last successful totals and never interrupt live
+score or celebration rendering. Live projection inputs poll on the same default
+25-second interval as matchup scores; weekly pregame projections and the player
+catalogue are cached for the process.
+
+When Sleeper's **Extra Game Each Week Against League Median** setting is enabled,
+the diagonal layout places a small gold medal two pixels outside each score for
+teams projected strictly above the league median. The live median is calculated
+from all projected team totals and updates with the same 25-second projection
+refresh. A team exactly at the median does not receive a medal.
+
+Team logos prefer a custom URL in Sleeper league metadata and fall back to the
+user's standard Sleeper avatar. Logos download once at process startup, are
+checked for a changed source URL every 25-second matchup refresh, and download
+again only after an avatar change. Updated files invalidate the in-memory image
+cache immediately.
+
 ## Physical LED board
 
 Physical-board mode requires a Raspberry Pi configured with a 64x32 RGB LED

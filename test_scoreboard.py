@@ -13,6 +13,7 @@ import main as scoreboard
 from layout_config import (add_layout_arguments, resolve_layout,
                            add_touchdown_arguments, resolve_touchdown_settings)
 from touchdowns import ReplayTouchdownMonitor
+from live_projections import ReplayProjectionMonitor
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_FIXTURE = PROJECT_DIR / "fixtures" / "sleeper_2025_week8.json"
@@ -87,6 +88,10 @@ def run_replay(fixture, rotation_interval=5, data_refresh_interval=60, layout=No
                 patch.object(scoreboard, "League", return_value=FixtureLeague(fixture)), \
                 patch.object(scoreboard, "create_touchdown_monitor",
                              return_value=ReplayTouchdownMonitor(touchdown_scenario)), \
+                patch.object(scoreboard, "LiveProjectionMonitor",
+                             return_value=ReplayProjectionMonitor(
+                                 fixture.get("live_projections"),
+                                 fixture.get("league_average_match", False))), \
                 patch.object(scoreboard, "get_current_nfl_state",
                              return_value=(fixture["week"], fixture["season_type"])), \
                 patch("requests.sessions.Session.request",

@@ -12,6 +12,7 @@ from layout_config import (add_layout_arguments, resolve_layout,
 from touchdowns import CelebrationQueue
 from touchdown_source import create_touchdown_monitor
 from touchdown_animation import CelebrationRenderer
+from live_projections import LiveProjectionMonitor, league_median
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
@@ -20,6 +21,15 @@ DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
 DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "25"))
 SLEEPER_NFL_STATE_URL = "https://api.sleeper.app/v1/state/nfl"
+
+
+def user_avatar_url(user):
+    """Prefer a custom league logo, then fall back to Sleeper's user avatar."""
+    metadata_url = (user.get("metadata") or {}).get("avatar")
+    if metadata_url:
+        return metadata_url
+    avatar_id = user.get("avatar")
+    return f"https://sleepercdn.com/avatars/{avatar_id}" if avatar_id else None
 
 # scrolling state: {matchup_index: offset_px}
 scroll_offsets = {}
@@ -170,6 +180,28 @@ def main():
 
     # Logo cache (PIL Image objects)
     logo_cache = {}
+    logo_sources = {}
+
+    def medal_image():
+        """Create a tiny 8x8 medal suited to the 64x32 pixel matrix."""
+        medal = Image.new("RGB", (8, 8), (0, 0, 0))
+        pixels = medal.load()
+        blue = (35, 95, 220)
+        red = (220, 45, 35)
+        gold = (255, 190, 0)
+        light_gold = (255, 230, 70)
+        for x, y, color in (
+                (1, 0, blue), (2, 0, blue), (5, 0, red), (6, 0, red),
+                (2, 1, blue), (3, 1, blue), (4, 1, red), (5, 1, red),
+                (3, 2, blue), (4, 2, red)):
+            pixels[x, y] = color
+        for y, span in ((3, (2, 5)), (4, (1, 6)), (5, (1, 6)),
+                        (6, (1, 6)), (7, (2, 5))):
+            for x in range(span[0], span[1] + 1):
+                pixels[x, y] = light_gold if (x, y) in ((3, 4), (2, 5)) else gold
+        return medal
+
+    median_medal = medal_image()
 
     def preload_logo(path: str):
         if path in logo_cache:
@@ -198,22 +230,27 @@ def main():
 
         # download user avatars
         for user in users:
-            logo_url = user['metadata'].get("avatar")
+            user_id = str(user["user_id"])
+            logo_url = user_avatar_url(user)
             if logo_url:
+                file_path = os.path.join(logos_dir, f"{user_id}.png")
+                if logo_sources.get(user_id) == logo_url and os.path.exists(file_path):
+                    continue
                 try:
                     # Fetch the image data
-                    response = requests.get(logo_url)
+                    response = requests.get(logo_url, timeout=10)
                     response.raise_for_status()  # Raise exception for HTTP errors
 
                     # Save the image to the 'logos' directory
-                    file_path = os.path.join(logos_dir, f"{user['user_id']}.png")
                     with open(file_path, "wb") as logo_file:
                         logo_file.write(response.content)
-                    print(f"Downloaded logo for user {user['user_id']} to {file_path}")
+                    logo_sources[user_id] = logo_url
+                    logo_cache.pop(file_path, None)
+                    print(f"Downloaded logo for user {user_id} to {file_path}")
                 except Exception as e:
-                    print(f"Failed to download logo for user {user['user_id']}: {e}")
+                    print(f"Failed to download logo for user {user_id}: {e}")
             else:
-                print(f"No avatar URL found for user {user['user_id']}")
+                print(f"No avatar URL found for user {user_id}")
 
         # Create a map for user_id to team_name (fallback to 'display_name' if team_name is not set)
         user_map = {
@@ -273,6 +310,7 @@ def main():
 
             detailed_matchups.append({
                 "team1": {
+                    "roster_id": str(team1["roster_id"]),
                     "name": team1_details["team_name"],
                     "wins": team1_details["wins"],
                     "losses": team1_details["losses"],
@@ -281,6 +319,7 @@ def main():
                     "logo": team1_logo_file
                 },
                 "team2": {
+                    "roster_id": str(team2["roster_id"]),
                     "name": team2_details["team_name"],
                     "wins": team2_details["wins"],
                     "losses": team2_details["losses"],
@@ -292,16 +331,17 @@ def main():
 
         return detailed_matchups
 
-    def draw_matchup(canvas, team1_data, team2_data, bg_color):
+    def draw_matchup(canvas, team1_data, team2_data, bg_color, show_projection=False,
+                     median=None):
         # Compose the entire frame offscreen; only SwapOnVSync publishes it.
         if layout == "diagonal":
-            draw_diagonal(canvas, team1_data, team2_data)
+            draw_diagonal(canvas, team1_data, team2_data, show_projection, median)
         else:
             draw_logos(canvas, team1_data['logo'], team2_data['logo'])
             canvas.SetImage(name_renderer.team_window(team1_data.get('name'), 30), 1, 17, False)
             canvas.SetImage(name_renderer.team_window(
                 team2_data.get('name'), 30, right_align=True), 33, 17, False)
-            draw_scores(canvas, team1_data['points'], team2_data['points'])
+            draw_scores(canvas, team1_data, team2_data, show_projection)
         return canvas
 
     def draw_empty_screen(canvas):
@@ -317,9 +357,22 @@ def main():
         graphics.DrawText(canvas, score_font, x, baseline_y, color, value)
         graphics.DrawText(canvas, score_font, x + 1, baseline_y, color, value)
 
-    def draw_scores(canvas, team1_score, team2_score):
+    def display_points(team, show_projection):
+        value = team.get("projection") if show_projection else team.get("points")
+        if value is None:
+            value = team.get("points", 0)
+        if show_projection and team.get("projection") is not None:
+            text = f"{float(value):.1f}".rstrip("0").rstrip(".")
+            return text
+        return str(value)
+
+    def draw_scores(canvas, team1, team2, show_projection=False):
         left_x = 1
         baseline_y = 31
+        team1_score = team1.get("projection") if show_projection else team1["points"]
+        team2_score = team2.get("projection") if show_projection else team2["points"]
+        team1_score = team1["points"] if team1_score is None else team1_score
+        team2_score = team2["points"] if team2_score is None else team2_score
 
         # Panel width detection fallback
         panel_width = getattr(matrix, 'width', None) or getattr(matrix, 'Width', None) or 64
@@ -341,8 +394,8 @@ def main():
             # Sum per-character widths; unknown chars fallback to 6px
             return sum(CHAR_WIDTHS.get(ch, 6) for ch in s)
 
-        s1 = str(team1_score)
-        s2 = str(team2_score)
+        s1 = display_points(team1, show_projection)
+        s2 = display_points(team2, show_projection)
 
         s1_w = text_pixel_width(s1)
         s2_w = text_pixel_width(s2)
@@ -372,7 +425,7 @@ def main():
         canvas.SetImage(logo1, 1, 1, False)
         canvas.SetImage(logo2, 48, 1, False)
 
-    def draw_diagonal(canvas, team1, team2):
+    def draw_diagonal(canvas, team1, team2, show_projection=False, median=None):
         # Mirrored two-row team blocks with two-pixel outer margins and gaps.
         canvas.SetImage(preload_logo(team1['logo']).resize((12, 12)), 2, 2, False)
         canvas.SetImage(preload_logo(team2['logo']).resize((12, 12)), 50, 18, False)
@@ -381,19 +434,31 @@ def main():
             tile = name_renderer.team_window(name, width=46, right_align=(side == 2))
             canvas.SetImage(tile, x, y, False)
 
-        points1, points2 = team1['points'], team2['points']
+        points1 = team1.get("projection") if show_projection else team1["points"]
+        points2 = team2.get("projection") if show_projection else team2["points"]
+        points1 = team1["points"] if points1 is None else points1
+        points2 = team2["points"] if points2 is None else points2
         color1 = green if points1 > points2 else red if points1 < points2 else white
         color2 = green if points2 > points1 else red if points2 < points1 else white
-        score1, score2 = str(points1), str(points2)
+        score1 = display_points(team1, show_projection)
+        score2 = display_points(team2, show_projection)
         # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
+        left_width = sum(score_font.CharacterWidth(ord(char)) for char in score1) + 1
         right_width = sum(score_font.CharacterWidth(ord(char)) for char in score2) + 1
-        draw_score_text(canvas, 16, 7, color1, score1)
-        draw_score_text(canvas, 48 - right_width, 31, color2, score2)
+        left_x = 16
+        right_x = 48 - right_width
+        draw_score_text(canvas, left_x, 7, color1, score1)
+        draw_score_text(canvas, right_x, 31, color2, score2)
+        if median is not None and points1 > median:
+            canvas.SetImage(median_medal, left_x + left_width + 2, 0, False)
+        if median is not None and points2 > median:
+            canvas.SetImage(median_medal, right_x - 10, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
         nonlocal display_week, season_type
         monitor = None
+        projection_monitor = None
         try:
             print("Press CTRL-C to stop.")
             matchup_data = get_team_data(display_league, display_week)
@@ -411,6 +476,9 @@ def main():
             celebration_renderer = CelebrationRenderer(name_renderer)
             celebrations = CelebrationQueue(touchdown_duration)
             monitor = create_touchdown_monitor(league_id, display_week, touchdown_poll_interval)
+            projection_monitor = LiveProjectionMonitor(
+                league_id, display_week, data_refresh_interval)
+            projection_version = 0
             last_tick = time.monotonic()
             last_refresh_time = last_tick
             last_frame_time = last_tick - 1
@@ -425,7 +493,16 @@ def main():
                 resumed = was_celebrating
                 if not was_celebrating:
                     rotation_elapsed += delta
+                redraw = resumed
                 events = monitor.events(display_week, now)
+                projection_totals, current_projection_version = projection_monitor.totals(display_week)
+                if current_projection_version != projection_version:
+                    for matchup in matchup_data:
+                        for team in matchup.values():
+                            team["projection"] = projection_totals.get(team["roster_id"])
+                    screens = rebuild(matchup_data)
+                    projection_version = current_projection_version
+                    redraw = True
                 for event in events:
                     logger.info("Queued %s: %s", event.kind, event.name)
                 celebration = celebrations.step(now, events)
@@ -439,7 +516,6 @@ def main():
                     time.sleep(0.05)
                     continue
                 was_celebrating = False
-                redraw = resumed
 
                 # Network-heavy legacy matchup refresh is deferred until the
                 # celebration queue is empty; the TD worker continues polling.
@@ -453,6 +529,9 @@ def main():
                         logger.warning("Could not refresh NFL state: %s", error)
                     try:
                         matchup_data = get_team_data(display_league, display_week)
+                        for matchup in matchup_data:
+                            for team in matchup.values():
+                                team["projection"] = projection_totals.get(team["roster_id"])
                         screens = rebuild(matchup_data)
                         current_screen_index = current_screen_index % len(screens) if screens else 0
                         redraw = True
@@ -477,7 +556,13 @@ def main():
                     if screens:
                         canvas.Clear()
                         team1, team2 = screens[current_screen_index]
-                        canvas = draw_matchup(canvas, team1, team2, black)
+                        show_projection = bool(projection_totals)
+                        median = None
+                        if (show_projection and
+                                getattr(projection_monitor, "median_enabled", False)):
+                            median = league_median(projection_totals)
+                        canvas = draw_matchup(
+                            canvas, team1, team2, black, show_projection, median)
                         canvas = matrix.SwapOnVSync(canvas)
                     else:
                         canvas = draw_empty_screen(canvas)
@@ -488,6 +573,8 @@ def main():
         finally:
             if monitor is not None:
                 monitor.close()
+            if projection_monitor is not None:
+                projection_monitor.close()
 
     # Start displaying scores
     display_scores(canvas, my_league)
