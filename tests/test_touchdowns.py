@@ -309,7 +309,7 @@ class PlaybackTests(unittest.TestCase):
         after = next(f for f in frames if f[0] > 5 and f[1] == "matchup")
         # Projection alternation may change the numeric text during an interrupt,
         # but both frames must still represent the same third fixture matchup.
-        expected_team2 = {"120.18", "P121.6"}
+        expected_team2 = {"121.6"}
         self.assertIn(before[2][0], expected_team2)
         self.assertIn(after[2][0], expected_team2)
         self.assertTrue(any(f[1] == "celebration" for f in frames))

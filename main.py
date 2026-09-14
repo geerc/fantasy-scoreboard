@@ -20,8 +20,16 @@ DISPLAY_WEEK_OVERRIDE = os.getenv("DISPLAY_WEEK")
 DEFAULT_WEEK = int(DISPLAY_WEEK_OVERRIDE) if DISPLAY_WEEK_OVERRIDE else None
 DEFAULT_ROTATION_INTERVAL = int(os.getenv("ROTATION_INTERVAL", "10"))
 DEFAULT_DATA_REFRESH_INTERVAL = int(os.getenv("DATA_REFRESH_INTERVAL", "25"))
-PROJECTION_DISPLAY_INTERVAL = 3
 SLEEPER_NFL_STATE_URL = "https://api.sleeper.app/v1/state/nfl"
+
+
+def user_avatar_url(user):
+    """Prefer a custom league logo, then fall back to Sleeper's user avatar."""
+    metadata_url = (user.get("metadata") or {}).get("avatar")
+    if metadata_url:
+        return metadata_url
+    avatar_id = user.get("avatar")
+    return f"https://sleepercdn.com/avatars/{avatar_id}" if avatar_id else None
 
 # scrolling state: {matchup_index: offset_px}
 scroll_offsets = {}
@@ -172,6 +180,7 @@ def main():
 
     # Logo cache (PIL Image objects)
     logo_cache = {}
+    logo_sources = {}
 
     def preload_logo(path: str):
         if path in logo_cache:
@@ -200,22 +209,27 @@ def main():
 
         # download user avatars
         for user in users:
-            logo_url = user['metadata'].get("avatar")
+            user_id = str(user["user_id"])
+            logo_url = user_avatar_url(user)
             if logo_url:
+                file_path = os.path.join(logos_dir, f"{user_id}.png")
+                if logo_sources.get(user_id) == logo_url and os.path.exists(file_path):
+                    continue
                 try:
                     # Fetch the image data
-                    response = requests.get(logo_url)
+                    response = requests.get(logo_url, timeout=10)
                     response.raise_for_status()  # Raise exception for HTTP errors
 
                     # Save the image to the 'logos' directory
-                    file_path = os.path.join(logos_dir, f"{user['user_id']}.png")
                     with open(file_path, "wb") as logo_file:
                         logo_file.write(response.content)
-                    print(f"Downloaded logo for user {user['user_id']} to {file_path}")
+                    logo_sources[user_id] = logo_url
+                    logo_cache.pop(file_path, None)
+                    print(f"Downloaded logo for user {user_id} to {file_path}")
                 except Exception as e:
-                    print(f"Failed to download logo for user {user['user_id']}: {e}")
+                    print(f"Failed to download logo for user {user_id}: {e}")
             else:
-                print(f"No avatar URL found for user {user['user_id']}")
+                print(f"No avatar URL found for user {user_id}")
 
         # Create a map for user_id to team_name (fallback to 'display_name' if team_name is not set)
         user_map = {
@@ -327,7 +341,7 @@ def main():
             value = team.get("points", 0)
         if show_projection and team.get("projection") is not None:
             text = f"{float(value):.1f}".rstrip("0").rstrip(".")
-            return f"P{text}"
+            return text
         return str(value)
 
     def draw_scores(canvas, team1, team2, show_projection=False):
@@ -513,8 +527,7 @@ def main():
                     if screens:
                         canvas.Clear()
                         team1, team2 = screens[current_screen_index]
-                        show_projection = bool(projection_totals) and (
-                            int(now / PROJECTION_DISPLAY_INTERVAL) % 2 == 1)
+                        show_projection = bool(projection_totals)
                         canvas = draw_matchup(
                             canvas, team1, team2, black, show_projection)
                         canvas = matrix.SwapOnVSync(canvas)

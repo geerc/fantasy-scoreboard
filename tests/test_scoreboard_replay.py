@@ -74,9 +74,9 @@ class ReplayTests(unittest.TestCase):
     def test_production_renderer_rotates_and_refreshes_offline(self):
         graphics, matrix = self.render_headless(self.fixture)
         rendered_text = [call.args[5] for call in graphics.DrawText.call_args_list]
-        self.assertIn("139.94", rendered_text)
-        self.assertIn("171.42", rendered_text)
-        self.assertIn("P148.7", rendered_text)
+        self.assertIn("148.7", rendered_text)
+        self.assertIn("154.2", rendered_text)
+        self.assertFalse(any(text.startswith("P") for text in rendered_text))
         self.assertGreater(matrix.SwapOnVSync.call_count, 5)
 
     def test_empty_preseason_screen(self):

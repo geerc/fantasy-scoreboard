@@ -3,9 +3,18 @@ import unittest
 from live_projections import (calculate_team_projections, clock_seconds,
                               projected_final, projection_field,
                               remaining_fraction)
+from main import user_avatar_url
 
 
 class LiveProjectionTests(unittest.TestCase):
+    def test_avatar_url_prefers_custom_logo_then_standard_avatar(self):
+        self.assertEqual(user_avatar_url({
+            "avatar": "profile", "metadata": {"avatar": "https://custom/logo.jpg"}
+        }), "https://custom/logo.jpg")
+        self.assertEqual(user_avatar_url({"avatar": "profile", "metadata": {}}),
+                         "https://sleepercdn.com/avatars/profile")
+        self.assertIsNone(user_avatar_url({"avatar": None, "metadata": None}))
+
     def test_clock_and_remaining_regulation_fraction(self):
         self.assertEqual(clock_seconds("12:34"), 754)
         self.assertEqual(remaining_fraction({"state": "pre"}), 1)
