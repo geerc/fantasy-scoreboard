@@ -86,6 +86,26 @@ projections and median indicators. ESPN leagues use ESPN's live projected team
 totals and team logos; median indicators are omitted because ESPN does not
 provide the equivalent league-median result. Missing logos use the default.
 
+### Win probability
+
+Win probability is an optional local Monte Carlo estimate. Enable it in the
+board config to alternate each matchup between projected score and win chance:
+
+```json
+"show_win_probability": true,
+"win_probability_display": "alternate",
+"win_probability_interval_seconds": 3,
+"win_probability_simulations": 5000
+```
+
+Use `"probability"` instead of `"alternate"` to show win chance continuously.
+The simulation uses the current score, projected final score, and the amount of
+uncertainty remaining in active starters. It runs only when projections update,
+uses a stable seed so unchanged inputs do not flicker, splits simulated ties
+equally, and resolves completed matchups to their exact result. The CLI options
+`--win-probability` / `--no-win-probability` and
+`--win-probability-simulations N` override the config.
+
 Touchdown and big-play monitors run for every configured league. The same NFL
 play is queued only once across leagues. One occurrence reveals its fantasy
 team; multiple occurrences owned by the same configured user reveal that user

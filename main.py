@@ -18,6 +18,9 @@ from live_projections import LiveProjectionMonitor, league_median
 from league_adapters import create_league_adapter, selected_owner_ids
 from multi_league_config import load_multi_league_config
 from multi_league_events import CrossLeagueCelebrations
+from win_probability import (add_win_probability_arguments,
+                             resolve_win_probability_settings,
+                             update_matchup_probabilities)
 
 # --- Configuration: can be set via CLI args or environment variables ---
 DEFAULT_LEAGUE_ID = os.getenv("SLEEPER_LEAGUE_ID", "1389341850288009216")
@@ -108,6 +111,7 @@ def main():
 
     add_layout_arguments(parser)
     add_touchdown_arguments(parser)
+    add_win_probability_arguments(parser)
     args = parser.parse_args()
     effective_config = args.config or (DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None)
     try:
@@ -115,9 +119,14 @@ def main():
         touchdown_duration, touchdown_poll_interval = resolve_touchdown_settings(
             args.touchdown_duration, args.touchdown_poll_interval, args.config)
         multi_config = load_multi_league_config(effective_config)
+        win_probability_settings = resolve_win_probability_settings(
+            args.win_probability, args.win_probability_simulations, args.config)
     except (OSError, ValueError) as error:
         parser.error(str(error))
     logger.info("Using %s board layout", layout)
+    if win_probability_settings.enabled:
+        logger.info("Using %s Monte Carlo trials per matchup",
+                    win_probability_settings.simulations)
 
     league_id = args.league_id
     week_is_dynamic = args.week is None
@@ -355,16 +364,18 @@ def main():
         return detailed_matchups
 
     def draw_matchup(canvas, team1_data, team2_data, bg_color, show_projection=False,
-                     median=None):
+                     median=None, show_win_probability=False):
         # Compose the entire frame offscreen; only SwapOnVSync publishes it.
         if layout == "diagonal":
-            draw_diagonal(canvas, team1_data, team2_data, show_projection, median)
+            draw_diagonal(canvas, team1_data, team2_data, show_projection, median,
+                          show_win_probability)
         else:
             draw_logos(canvas, team1_data['logo'], team2_data['logo'])
             canvas.SetImage(name_renderer.team_window(team1_data.get('name'), 30), 1, 17, False)
             canvas.SetImage(name_renderer.team_window(
                 team2_data.get('name'), 30, right_align=True), 33, 17, False)
-            draw_scores(canvas, team1_data, team2_data, show_projection)
+            draw_scores(canvas, team1_data, team2_data, show_projection,
+                        show_win_probability)
         return canvas
 
     def draw_empty_screen(canvas):
@@ -386,7 +397,19 @@ def main():
         graphics.DrawText(canvas, score_font, x, baseline_y, color, value)
         graphics.DrawText(canvas, score_font, x + 1, baseline_y, color, value)
 
-    def display_points(team, show_projection):
+    def probability_phase(now, team1, team2):
+        if not win_probability_settings.enabled:
+            return False
+        if (team1.get("win_probability") is None or
+                team2.get("win_probability") is None):
+            return False
+        if win_probability_settings.display == "probability":
+            return True
+        return int(now / win_probability_settings.interval_seconds) % 2 == 1
+
+    def display_points(team, show_projection, show_win_probability=False):
+        if show_win_probability and team.get("win_probability") is not None:
+            return f"{float(team['win_probability']):.0f}%"
         value = team.get("projection") if show_projection else team.get("points")
         if value is None:
             value = team.get("points", 0)
@@ -395,11 +418,14 @@ def main():
             return text
         return str(value)
 
-    def draw_scores(canvas, team1, team2, show_projection=False):
+    def draw_scores(canvas, team1, team2, show_projection=False,
+                    show_win_probability=False):
         left_x = 1
         baseline_y = 31
-        team1_score = team1.get("projection") if show_projection else team1["points"]
-        team2_score = team2.get("projection") if show_projection else team2["points"]
+        team1_score = (team1.get("win_probability") if show_win_probability else
+                       team1.get("projection") if show_projection else team1["points"])
+        team2_score = (team2.get("win_probability") if show_win_probability else
+                       team2.get("projection") if show_projection else team2["points"])
         team1_score = team1["points"] if team1_score is None else team1_score
         team2_score = team2["points"] if team2_score is None else team2_score
 
@@ -423,8 +449,8 @@ def main():
             # Sum per-character widths; unknown chars fallback to 6px
             return sum(CHAR_WIDTHS.get(ch, 6) for ch in s)
 
-        s1 = display_points(team1, show_projection)
-        s2 = display_points(team2, show_projection)
+        s1 = display_points(team1, show_projection, show_win_probability)
+        s2 = display_points(team2, show_projection, show_win_probability)
 
         s1_w = text_pixel_width(s1)
         s2_w = text_pixel_width(s2)
@@ -454,7 +480,8 @@ def main():
         canvas.SetImage(logo1, 1, 1, False)
         canvas.SetImage(logo2, 48, 1, False)
 
-    def draw_diagonal(canvas, team1, team2, show_projection=False, median=None):
+    def draw_diagonal(canvas, team1, team2, show_projection=False, median=None,
+                      show_win_probability=False):
         # Mirrored two-row team blocks with two-pixel outer margins and gaps.
         canvas.SetImage(preload_logo(team1['logo']).resize((12, 12)), 2, 2, False)
         canvas.SetImage(preload_logo(team2['logo']).resize((12, 12)), 50, 18, False)
@@ -463,14 +490,16 @@ def main():
             tile = name_renderer.team_window(name, width=46, right_align=(side == 2))
             canvas.SetImage(tile, x, y, False)
 
-        points1 = team1.get("projection") if show_projection else team1["points"]
-        points2 = team2.get("projection") if show_projection else team2["points"]
+        points1 = (team1.get("win_probability") if show_win_probability else
+                   team1.get("projection") if show_projection else team1["points"])
+        points2 = (team2.get("win_probability") if show_win_probability else
+                   team2.get("projection") if show_projection else team2["points"])
         points1 = team1["points"] if points1 is None else points1
         points2 = team2["points"] if points2 is None else points2
         color1 = green if points1 > points2 else red if points1 < points2 else white
         color2 = green if points2 > points1 else red if points2 < points1 else white
-        score1 = display_points(team1, show_projection)
-        score2 = display_points(team2, show_projection)
+        score1 = display_points(team1, show_projection, show_win_probability)
+        score2 = display_points(team2, show_projection, show_win_probability)
         # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
         left_width = sum(score_font.CharacterWidth(ord(char)) for char in score1) + 1
         right_width = sum(score_font.CharacterWidth(ord(char)) for char in score2) + 1
@@ -478,9 +507,9 @@ def main():
         right_x = 48 - right_width
         draw_score_text(canvas, left_x, 7, color1, score1)
         draw_score_text(canvas, right_x, 31, color2, score2)
-        if median is not None and points1 > median:
+        if not show_win_probability and median is not None and points1 > median:
             canvas.SetImage(median_medal, left_x + left_width, 1, False)
-        if median is not None and points2 > median:
+        if not show_win_probability and median is not None and points2 > median:
             canvas.SetImage(median_medal, right_x - 8, 25, False)
 
     def display_scores(canvas, display_league):
@@ -529,6 +558,10 @@ def main():
                     for matchup in matchup_data:
                         for team in matchup.values():
                             team["projection"] = projection_totals.get(team["roster_id"])
+                    if projection_totals and win_probability_settings.enabled:
+                        update_matchup_probabilities(
+                            matchup_data, win_probability_settings.simulations,
+                            projection_monitor.uncertainties)
                     screens = rebuild(matchup_data)
                     projection_version = current_projection_version
                     redraw = True
@@ -561,6 +594,10 @@ def main():
                         for matchup in matchup_data:
                             for team in matchup.values():
                                 team["projection"] = projection_totals.get(team["roster_id"])
+                        if projection_totals and win_probability_settings.enabled:
+                            update_matchup_probabilities(
+                                matchup_data, win_probability_settings.simulations,
+                                projection_monitor.uncertainties)
                         screens = rebuild(matchup_data)
                         current_screen_index = current_screen_index % len(screens) if screens else 0
                         redraw = True
@@ -586,12 +623,14 @@ def main():
                         canvas.Clear()
                         team1, team2 = screens[current_screen_index]
                         show_projection = bool(projection_totals)
+                        show_probability = probability_phase(now, team1, team2)
                         median = None
                         if (show_projection and
                                 getattr(projection_monitor, "median_enabled", False)):
                             median = league_median(projection_totals)
                         canvas = draw_matchup(
-                            canvas, team1, team2, black, show_projection, median)
+                            canvas, team1, team2, black, show_projection, median,
+                            show_probability)
                         canvas = matrix.SwapOnVSync(canvas)
                     else:
                         canvas = draw_empty_screen(canvas)
@@ -618,7 +657,7 @@ def main():
                     league_config, settings.users, settings.show_all_matchups)
                 runtime = {"config": league_config, "adapter": adapter,
                            "owners": owners, "matchups": [], "projections": {},
-                           "median_enabled": False}
+                           "uncertainties": {}, "median_enabled": False}
                 monitor = create_league_touchdown_monitor(
                     league_config, settings.credentials, display_week,
                     touchdown_poll_interval)
@@ -643,6 +682,10 @@ def main():
                         projected = runtime["projections"].get(team["roster_id"])
                         if projected is not None:
                             team["projection"] = projected
+                if runtime["projections"] and win_probability_settings.enabled:
+                    update_matchup_probabilities(
+                        rows, win_probability_settings.simulations,
+                        runtime["uncertainties"])
                 runtime["matchups"] = rows
 
             def screens():
@@ -698,12 +741,18 @@ def main():
                     if projection:
                         totals, version = projection.totals(display_week)
                         runtime["projections"] = totals
+                        runtime["uncertainties"] = projection.uncertainties
                         runtime["median_enabled"] = projection.median_enabled
                         if version != runtime["projection_version"]:
                             runtime["projection_version"] = version
                             for matchup in runtime["matchups"]:
                                 for team in matchup.values():
                                     team["projection"] = totals.get(team["roster_id"])
+                            if totals and win_probability_settings.enabled:
+                                update_matchup_probabilities(
+                                    runtime["matchups"],
+                                    win_probability_settings.simulations,
+                                    runtime["uncertainties"])
                 events = event_merger.merge(raw_events)
                 celebration = celebrations.step(now, events)
                 if celebration:
@@ -749,9 +798,12 @@ def main():
                         totals = runtime["projections"]
                         median = (league_median(totals) if totals and
                                   runtime["median_enabled"] else None)
+                        show_probability = probability_phase(
+                            now, page["team1"], page["team2"])
                         canvas.Clear()
                         canvas = draw_matchup(canvas, page["team1"], page["team2"],
-                                              black, bool(totals), median)
+                                              black, bool(totals), median,
+                                              show_probability)
                         canvas = matrix.SwapOnVSync(canvas)
                     last_frame = now
                 time.sleep(.05)

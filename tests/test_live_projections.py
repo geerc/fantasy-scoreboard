@@ -5,7 +5,7 @@ import unittest
 
 from PIL import Image
 
-from live_projections import (calculate_team_projections, clock_seconds,
+from live_projections import (calculate_team_outlooks, calculate_team_projections, clock_seconds,
                               league_median, projected_final, projection_field,
                               remaining_fraction)
 from main import decode_logo, open_logo_or_default, user_avatar_url
@@ -90,6 +90,24 @@ class LiveProjectionTests(unittest.TestCase):
         }
         self.assertEqual(calculate_team_projections(
             matchups, players, projections, games, {"rec": 0.5}), {"7": 49.0})
+
+    def test_uncertainty_only_includes_remaining_starter_games(self):
+        matchups = [{"roster_id": 7, "starters": ["qb", "wr"],
+                     "players_points": {"qb": 10, "wr": 8}}]
+        players = {"qb": {"team": "BUF", "position": "QB"},
+                   "wr": {"team": "DAL", "position": "WR"}}
+        projections = {"qb": {"pts_ppr": 20}, "wr": {"pts_ppr": 16}}
+        games = {"BUF": {"state": "in", "period": 3, "clock": "15:00"},
+                 "DAL": {"state": "post"}}
+        totals, uncertainties = calculate_team_outlooks(
+            matchups, players, projections, games, {"rec": 1})
+        self.assertEqual(totals, {"7": 28.0})
+        self.assertGreater(uncertainties["7"], 0)
+
+        games["BUF"] = {"state": "post"}
+        _, uncertainties = calculate_team_outlooks(
+            matchups, players, projections, games, {"rec": 1})
+        self.assertEqual(uncertainties, {"7": 0.0})
 
 
 if __name__ == "__main__":

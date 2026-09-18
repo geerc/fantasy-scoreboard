@@ -1,6 +1,10 @@
 {
   "layout": "diagonal",
   "touchdown_duration_seconds": 10,
+  "show_win_probability": true,
+  "win_probability_display": "alternate",
+  "win_probability_interval_seconds": 3,
+  "win_probability_simulations": 5000,
   "show_league_pages": true,
   "league_page_seconds": 5,
   "show_all_matchups": false,

@@ -1,6 +1,7 @@
 """Estimate live final fantasy scores from Sleeper projections and ESPN clocks."""
 
 import logging
+import math
 from queue import Empty, Queue
 from threading import Event, Thread
 
@@ -80,20 +81,42 @@ def projection_field(scoring_settings):
 
 def calculate_team_projections(matchups, players, projections, team_games,
                                scoring_settings):
+    return calculate_team_outlooks(
+        matchups, players, projections, team_games, scoring_settings)[0]
+
+
+POSITION_VOLATILITY = {
+    "QB": .45, "RB": .65, "WR": .75, "TE": .75, "K": .65, "DEF": .80,
+}
+
+
+def calculate_team_outlooks(matchups, players, projections, team_games,
+                            scoring_settings):
+    """Return projected totals and remaining-score standard deviations."""
     field = projection_field(scoring_settings)
     totals = {}
+    uncertainties = {}
     for matchup in matchups:
         total = 0.0
+        variance = 0.0
         player_points = matchup.get("players_points") or {}
         for player_id in matchup.get("starters") or []:
             player_id = str(player_id)
-            actual = player_points.get(player_id, 0)
-            pregame = (projections.get(player_id) or {}).get(field, 0)
-            nfl_team = team_code(str(
-                (players.get(player_id) or {}).get("team") or "").upper())
-            total += projected_final(actual, pregame, team_games.get(nfl_team))
+            player = players.get(player_id) or {}
+            actual = float(player_points.get(player_id, 0) or 0)
+            pregame = float((projections.get(player_id) or {}).get(field, 0) or 0)
+            nfl_team = team_code(str(player.get("team") or "").upper())
+            game = team_games.get(nfl_team)
+            total += projected_final(actual, pregame, game)
+            remaining = remaining_fraction(game)
+            remaining = 1.0 if remaining is None else remaining
+            if remaining > 0 and pregame > 0:
+                position = str(player.get("position") or "").upper()
+                volatility = POSITION_VOLATILITY.get(position, .70)
+                variance += (pregame * volatility * math.sqrt(remaining)) ** 2
         totals[str(matchup["roster_id"])] = round(total, 2)
-    return totals
+        uncertainties[str(matchup["roster_id"])] = round(math.sqrt(variance), 3)
+    return totals, uncertainties
 
 
 class SleeperEspnProjectionSource:
@@ -140,12 +163,13 @@ class SleeperEspnProjectionSource:
                 if abbreviation:
                     team_games[team_code(str(abbreviation).upper())] = normalized
         selected_players = {pid: (self.players or {}).get(pid, {}) for pid in starters}
-        totals = calculate_team_projections(
+        totals, uncertainties = calculate_team_outlooks(
             matchups, selected_players, self.projections, team_games,
             self.league.get("scoring_settings") or {})
         return {
             "context": [self.league_id, season, season_type, week],
             "totals": totals,
+            "uncertainties": uncertainties,
             "median_enabled": bool(
                 (self.league.get("settings") or {}).get("league_average_match")),
         }
@@ -159,6 +183,7 @@ class LiveProjectionMonitor:
         self.stop = Event()
         self.results = Queue()
         self.latest = {}
+        self.uncertainties = {}
         self.median_enabled = False
         self.version = 0
         self.worker = Thread(target=self._run, name="projection-poller", daemon=True)
@@ -182,6 +207,7 @@ class LiveProjectionMonitor:
                 break
             if snapshot["context"][-1] == week:
                 self.latest = snapshot["totals"]
+                self.uncertainties = snapshot.get("uncertainties", {})
                 self.median_enabled = snapshot.get("median_enabled", False)
                 self.version += 1
         return self.latest, self.version
@@ -192,8 +218,10 @@ class LiveProjectionMonitor:
 
 class ReplayProjectionMonitor:
     """Offline monitor with deterministic roster totals supplied by a fixture."""
-    def __init__(self, totals=None, median_enabled=False):
+    def __init__(self, totals=None, median_enabled=False, uncertainties=None):
         self.latest = {str(key): value for key, value in (totals or {}).items()}
+        self.uncertainties = {
+            str(key): value for key, value in (uncertainties or {}).items()}
         self.median_enabled = median_enabled
         self.delivered = False
 
