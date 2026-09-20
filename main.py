@@ -234,16 +234,18 @@ def main():
     median_medal = medal_image()
 
     def projection_arrow_image(direction):
-        """Create a compact green-up or red-down projection trend arrow."""
-        arrow = Image.new("RGB", (3, 7), (0, 0, 0))
+        """Create a compact two-pixel-thick projection trend chevron."""
+        arrow = Image.new("RGB", (5, 5), (0, 0, 0))
         pixels = arrow.load()
         color = (0, 255, 0) if direction > 0 else (255, 0, 0)
         if direction > 0:
-            coordinates = ((1, 0), (0, 1), (1, 1), (2, 1),
-                           (1, 2), (1, 3), (1, 4), (1, 5), (1, 6))
+            coordinates = ((2, 0), (1, 1), (2, 1), (3, 1),
+                           (0, 2), (1, 2), (3, 2), (4, 2),
+                           (0, 3), (4, 3))
         else:
-            coordinates = ((1, 0), (1, 1), (1, 2), (1, 3), (1, 4),
-                           (0, 5), (1, 5), (2, 5), (1, 6))
+            coordinates = ((0, 1), (4, 1),
+                           (0, 2), (1, 2), (3, 2), (4, 2),
+                           (1, 3), (2, 3), (3, 3), (2, 4))
         for x, y in coordinates:
             pixels[x, y] = color
         return arrow
@@ -495,10 +497,10 @@ def main():
             trend2 = team2.get("projection_trend", 0)
             if trend1:
                 canvas.SetImage(
-                    projection_arrows[trend1], left_x + s1_w + 1, 25, False)
+                    projection_arrows[trend1], left_x + s1_w + 1, 26, False)
             if trend2:
                 canvas.SetImage(
-                    projection_arrows[trend2], team2_x - 4, 25, False)
+                    projection_arrows[trend2], team2_x - 6, 26, False)
 
     def draw_logos(canvas, team1_logo_path, team2_logo_path):
         logo1 = preload_logo(team1_logo_path).resize((15, 15))
@@ -536,13 +538,13 @@ def main():
         trend1 = team1.get("projection_trend", 0) if show_projection and not show_win_probability else 0
         trend2 = team2.get("projection_trend", 0) if show_projection and not show_win_probability else 0
         arrow1_x = left_x + left_width + 1
-        arrow2_x = right_x - 4
+        arrow2_x = right_x - 6
         if trend1:
-            canvas.SetImage(projection_arrows[trend1], arrow1_x, 1, False)
+            canvas.SetImage(projection_arrows[trend1], arrow1_x, 2, False)
         if trend2:
-            canvas.SetImage(projection_arrows[trend2], arrow2_x, 25, False)
+            canvas.SetImage(projection_arrows[trend2], arrow2_x, 26, False)
         if not show_win_probability and median is not None and points1 > median:
-            medal_x = arrow1_x + 4 if trend1 else left_x + left_width
+            medal_x = arrow1_x + 6 if trend1 else left_x + left_width
             canvas.SetImage(median_medal, medal_x, 1, False)
         if not show_win_probability and median is not None and points2 > median:
             medal_x = arrow2_x - 8 if trend2 else right_x - 8
