@@ -47,10 +47,24 @@ league-name page, that league's matchups, then the next league. The global
 five seconds.
 
 The top-level `users` registry maps readable keys to stable Sleeper user IDs
-and/or ESPN member IDs. Set `default_display_users` to show only matchups
-involving those users by default. Set the global `"show_all_matchups": false`
-to use that filter, or `true` to show every matchup. A league can override both
-with `"display_users": ["christian"]` and its own `"show_all_matchups"` value.
+and/or ESPN member IDs. Matchup scope can be selected independently for every
+league:
+
+```json
+{
+  "key": "my-league",
+  "platform": "sleeper",
+  "league_id": "123456",
+  "show_all_matchups": false,
+  "display_users": ["christian"]
+}
+```
+
+Set `show_all_matchups` to `true` to rotate through every matchup in that
+league. Set it to `false` to show only matchups containing one of that league's
+`display_users`. Multiple user keys may be listed. `default_display_users` is
+used when a league omits `display_users`; a top-level `show_all_matchups` remains
+available as a backward-compatible default when a league omits its own value.
 This filter does not decide celebration ownership: all configured users remain
 eligible for cross-league attribution.
 

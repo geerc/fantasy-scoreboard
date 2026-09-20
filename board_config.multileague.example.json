@@ -7,7 +7,6 @@
   "win_probability_simulations": 5000,
   "show_league_pages": true,
   "league_page_seconds": 5,
-  "show_all_matchups": false,
   "default_display_users": ["christian"],
   "users": {
     "christian": {
@@ -27,7 +26,9 @@
       "key": "sypip",
       "platform": "sleeper",
       "league_id": "1389341850288009216",
-      "label": "SYPIP"
+      "label": "SYPIP",
+      "show_all_matchups": false,
+      "display_users": ["christian"]
     },
     {
       "key": "public-espn",
@@ -45,7 +46,9 @@
       "league_id": "REPLACE-WITH-LEAGUE-ID",
       "label": "PRIVATE ESPN",
       "season": 2026,
-      "credentials": "primary"
+      "credentials": "primary",
+      "show_all_matchups": false,
+      "display_users": ["christian"]
     }
   ]
 }
