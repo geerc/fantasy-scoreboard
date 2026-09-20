@@ -24,6 +24,20 @@ def league_median(totals):
     return (values[middle - 1] + values[middle]) / 2
 
 
+def projection_trends(previous, current, tolerance=.005):
+    """Return roster trend directions compared with the prior projection poll."""
+    previous = {str(key): value for key, value in previous.items()}
+    trends = {}
+    for roster_id, value in current.items():
+        roster_id = str(roster_id)
+        if roster_id not in previous:
+            trends[roster_id] = 0
+            continue
+        change = float(value) - float(previous[roster_id])
+        trends[roster_id] = 1 if change > tolerance else -1 if change < -tolerance else 0
+    return trends
+
+
 def get_json(url, **params):
     response = requests.get(url, params=params or None, timeout=10)
     response.raise_for_status()

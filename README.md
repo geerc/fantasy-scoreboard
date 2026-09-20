@@ -121,6 +121,12 @@ equally, and resolves completed matchups to their exact result. The CLI options
 `--win-probability` / `--no-win-probability` and
 `--win-probability-simulations N` override the config.
 
+During the projected-score half, a green up arrow or red down arrow shows how
+each team's projection changed at the latest projection refresh. The first
+successful projection has no arrow, and unchanged projections show no arrow.
+On median-enabled Sleeper leagues, the arrow is placed between the score and
+the median medal.
+
 Touchdown and big-play monitors run for every configured league. The same NFL
 play is queued only once across leagues. One occurrence reveals its fantasy
 team; multiple occurrences owned by the same configured user reveal that user

@@ -14,7 +14,7 @@ from layout_config import (add_layout_arguments, resolve_layout,
 from touchdowns import CelebrationQueue
 from touchdown_source import create_touchdown_monitor, create_league_touchdown_monitor
 from touchdown_animation import CelebrationRenderer
-from live_projections import LiveProjectionMonitor, league_median
+from live_projections import LiveProjectionMonitor, league_median, projection_trends
 from league_adapters import create_league_adapter, selected_owner_ids
 from multi_league_config import load_multi_league_config
 from multi_league_events import CrossLeagueCelebrations
@@ -232,6 +232,26 @@ def main():
         return medal
 
     median_medal = medal_image()
+
+    def projection_arrow_image(direction):
+        """Create a compact green-up or red-down projection trend arrow."""
+        arrow = Image.new("RGB", (3, 7), (0, 0, 0))
+        pixels = arrow.load()
+        color = (0, 255, 0) if direction > 0 else (255, 0, 0)
+        if direction > 0:
+            coordinates = ((1, 0), (0, 1), (1, 1), (2, 1),
+                           (1, 2), (1, 3), (1, 4), (1, 5), (1, 6))
+        else:
+            coordinates = ((1, 0), (1, 1), (1, 2), (1, 3), (1, 4),
+                           (0, 5), (1, 5), (2, 5), (1, 6))
+        for x, y in coordinates:
+            pixels[x, y] = color
+        return arrow
+
+    projection_arrows = {
+        1: projection_arrow_image(1),
+        -1: projection_arrow_image(-1),
+    }
 
     def preload_logo(path: str):
         if path in logo_cache:
@@ -470,6 +490,15 @@ def main():
         else:
             draw_score_text(canvas, left_x, baseline_y, white, s1)
             draw_score_text(canvas, team2_x, baseline_y, white, s2)
+        if show_projection and not show_win_probability:
+            trend1 = team1.get("projection_trend", 0)
+            trend2 = team2.get("projection_trend", 0)
+            if trend1:
+                canvas.SetImage(
+                    projection_arrows[trend1], left_x + s1_w + 1, 25, False)
+            if trend2:
+                canvas.SetImage(
+                    projection_arrows[trend2], team2_x - 4, 25, False)
 
     def draw_logos(canvas, team1_logo_path, team2_logo_path):
         logo1 = preload_logo(team1_logo_path).resize((15, 15))
@@ -504,10 +533,20 @@ def main():
         right_x = 48 - right_width
         draw_score_text(canvas, left_x, 7, color1, score1)
         draw_score_text(canvas, right_x, 31, color2, score2)
+        trend1 = team1.get("projection_trend", 0) if show_projection and not show_win_probability else 0
+        trend2 = team2.get("projection_trend", 0) if show_projection and not show_win_probability else 0
+        arrow1_x = left_x + left_width + 1
+        arrow2_x = right_x - 4
+        if trend1:
+            canvas.SetImage(projection_arrows[trend1], arrow1_x, 1, False)
+        if trend2:
+            canvas.SetImage(projection_arrows[trend2], arrow2_x, 25, False)
         if not show_win_probability and median is not None and points1 > median:
-            canvas.SetImage(median_medal, left_x + left_width, 1, False)
+            medal_x = arrow1_x + 4 if trend1 else left_x + left_width
+            canvas.SetImage(median_medal, medal_x, 1, False)
         if not show_win_probability and median is not None and points2 > median:
-            canvas.SetImage(median_medal, right_x - 8, 25, False)
+            medal_x = arrow2_x - 8 if trend2 else right_x - 8
+            canvas.SetImage(median_medal, medal_x, 25, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
@@ -534,6 +573,8 @@ def main():
             projection_monitor = LiveProjectionMonitor(
                 league_id, display_week, data_refresh_interval)
             projection_version = 0
+            previous_projection_totals = {}
+            current_projection_trends = {}
             last_tick = time.monotonic()
             last_refresh_time = last_tick
             last_frame_time = last_tick - 1
@@ -552,15 +593,20 @@ def main():
                 events = monitor.events(display_week, now)
                 projection_totals, current_projection_version = projection_monitor.totals(display_week)
                 if current_projection_version != projection_version:
+                    current_projection_trends = projection_trends(
+                        previous_projection_totals, projection_totals)
                     for matchup in matchup_data:
                         for team in matchup.values():
                             team["projection"] = projection_totals.get(team["roster_id"])
+                            team["projection_trend"] = current_projection_trends.get(
+                                team["roster_id"], 0)
                     if projection_totals and win_probability_settings.enabled:
                         update_matchup_probabilities(
                             matchup_data, win_probability_settings.simulations,
                             projection_monitor.uncertainties)
                     screens = rebuild(matchup_data)
                     projection_version = current_projection_version
+                    previous_projection_totals = dict(projection_totals)
                     redraw = True
                 for event in events:
                     logger.info("Queued %s: %s", event.kind, event.name)
@@ -591,6 +637,8 @@ def main():
                         for matchup in matchup_data:
                             for team in matchup.values():
                                 team["projection"] = projection_totals.get(team["roster_id"])
+                                team["projection_trend"] = current_projection_trends.get(
+                                    team["roster_id"], 0)
                         if projection_totals and win_probability_settings.enabled:
                             update_matchup_probabilities(
                                 matchup_data, win_probability_settings.simulations,
@@ -655,7 +703,8 @@ def main():
                     league_config, settings.users, settings.show_all_matchups)
                 runtime = {"config": league_config, "adapter": adapter,
                            "owners": owners, "matchups": [], "projections": {},
-                           "uncertainties": {}, "median_enabled": False}
+                           "projection_trends": {}, "uncertainties": {},
+                           "median_enabled": False}
                 monitor = create_league_touchdown_monitor(
                     league_config, settings.credentials, display_week,
                     touchdown_poll_interval)
@@ -671,15 +720,20 @@ def main():
 
             def refresh(runtime):
                 config = runtime["config"]
+                previous = dict(runtime["projections"])
                 rows = get_team_data(runtime["adapter"], display_week,
                                      runtime["owners"], config.key)
                 if config.platform == "espn":
                     runtime["projections"] = dict(runtime["adapter"].projections)
+                    runtime["projection_trends"] = projection_trends(
+                        previous, runtime["projections"])
                 for matchup in rows:
                     for team in matchup.values():
                         projected = runtime["projections"].get(team["roster_id"])
                         if projected is not None:
                             team["projection"] = projected
+                        team["projection_trend"] = runtime["projection_trends"].get(
+                            team["roster_id"], 0)
                 if runtime["projections"] and win_probability_settings.enabled:
                     update_matchup_probabilities(
                         rows, win_probability_settings.simulations,
@@ -738,14 +792,18 @@ def main():
                     projection = runtime.get("projection_monitor")
                     if projection:
                         totals, version = projection.totals(display_week)
-                        runtime["projections"] = totals
                         runtime["uncertainties"] = projection.uncertainties
                         runtime["median_enabled"] = projection.median_enabled
                         if version != runtime["projection_version"]:
+                            runtime["projection_trends"] = projection_trends(
+                                runtime["projections"], totals)
                             runtime["projection_version"] = version
+                            runtime["projections"] = totals
                             for matchup in runtime["matchups"]:
                                 for team in matchup.values():
                                     team["projection"] = totals.get(team["roster_id"])
+                                    team["projection_trend"] = runtime[
+                                        "projection_trends"].get(team["roster_id"], 0)
                             if totals and win_probability_settings.enabled:
                                 update_matchup_probabilities(
                                     runtime["matchups"],

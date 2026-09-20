@@ -7,7 +7,7 @@ from PIL import Image
 
 from live_projections import (calculate_team_outlooks, calculate_team_projections, clock_seconds,
                               league_median, projected_final, projection_field,
-                              remaining_fraction)
+                              projection_trends, remaining_fraction)
 from main import decode_logo, open_logo_or_default, user_avatar_url
 
 
@@ -16,6 +16,12 @@ class LiveProjectionTests(unittest.TestCase):
         self.assertEqual(league_median({"1": 90, "2": 120, "3": 100, "4": 80}), 95)
         self.assertEqual(league_median({"1": 90, "2": 120, "3": 100}), 100)
         self.assertIsNone(league_median({"1": 90}))
+
+    def test_projection_trends_compare_only_with_prior_values(self):
+        self.assertEqual(projection_trends(
+            {"1": 100, "2": 110, "3": 90},
+            {"1": 101.5, "2": 108, "3": 90, "4": 120}),
+            {"1": 1, "2": -1, "3": 0, "4": 0})
 
     def test_avatar_url_prefers_custom_logo_then_standard_avatar(self):
         self.assertEqual(user_avatar_url({
