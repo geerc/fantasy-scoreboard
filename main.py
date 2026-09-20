@@ -20,6 +20,7 @@ from multi_league_config import load_multi_league_config
 from multi_league_events import CrossLeagueCelebrations
 from win_probability import (add_win_probability_arguments,
                              resolve_win_probability_settings,
+                             show_probability_phase,
                              update_matchup_probabilities)
 
 # --- Configuration: can be set via CLI args or environment variables ---
@@ -397,15 +398,11 @@ def main():
         graphics.DrawText(canvas, score_font, x, baseline_y, color, value)
         graphics.DrawText(canvas, score_font, x + 1, baseline_y, color, value)
 
-    def probability_phase(now, team1, team2):
-        if not win_probability_settings.enabled:
-            return False
-        if (team1.get("win_probability") is None or
-                team2.get("win_probability") is None):
-            return False
-        if win_probability_settings.display == "probability":
-            return True
-        return int(now / win_probability_settings.interval_seconds) % 2 == 1
+    def probability_phase(elapsed, duration, team1, team2):
+        available = (team1.get("win_probability") is not None and
+                     team2.get("win_probability") is not None)
+        return show_probability_phase(
+            win_probability_settings, elapsed, duration, available)
 
     def display_points(team, show_projection, show_win_probability=False):
         if show_win_probability and team.get("win_probability") is not None:
@@ -623,7 +620,8 @@ def main():
                         canvas.Clear()
                         team1, team2 = screens[current_screen_index]
                         show_projection = bool(projection_totals)
-                        show_probability = probability_phase(now, team1, team2)
+                        show_probability = probability_phase(
+                            rotation_elapsed, rotation_interval, team1, team2)
                         median = None
                         if (show_projection and
                                 getattr(projection_monitor, "median_enabled", False)):
@@ -799,7 +797,8 @@ def main():
                         median = (league_median(totals) if totals and
                                   runtime["median_enabled"] else None)
                         show_probability = probability_phase(
-                            now, page["team1"], page["team2"])
+                            page_elapsed, page["duration"],
+                            page["team1"], page["team2"])
                         canvas.Clear()
                         canvas = draw_matchup(canvas, page["team1"], page["team2"],
                                               black, bool(totals), median,

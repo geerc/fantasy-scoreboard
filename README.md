@@ -108,11 +108,12 @@ board config to alternate each matchup between projected score and win chance:
 ```json
 "show_win_probability": true,
 "win_probability_display": "alternate",
-"win_probability_interval_seconds": 3,
 "win_probability_simulations": 5000
 ```
 
-Use `"probability"` instead of `"alternate"` to show win chance continuously.
+In `"alternate"` mode, each matchup shows projected points for the first half
+of its rotation time and win probability for the second half, then advances to
+the next matchup. Use `"probability"` instead to show win chance continuously.
 The simulation uses the current score, projected final score, and the amount of
 uncertainty remaining in active starters. It runs only when projections update,
 uses a stable seed so unchanged inputs do not flicker, splits simulated ties

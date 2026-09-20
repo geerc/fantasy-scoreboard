@@ -14,7 +14,6 @@ from layout_config import DEFAULT_CONFIG
 class WinProbabilitySettings:
     enabled: bool = False
     display: str = "alternate"
-    interval_seconds: float = 3.0
     simulations: int = 5000
 
 
@@ -46,18 +45,23 @@ def resolve_win_probability_settings(enabled=None, simulations=None, config=None
     simulations = (values.get("win_probability_simulations", 5000)
                    if simulations is None else simulations)
     display = values.get("win_probability_display", "alternate")
-    interval = values.get("win_probability_interval_seconds", 3)
     if not isinstance(enabled, bool):
         raise ValueError("show_win_probability must be true or false")
     if display not in ("alternate", "probability"):
         raise ValueError("win_probability_display must be alternate or probability")
-    if (isinstance(interval, bool) or not isinstance(interval, (int, float)) or
-            not math.isfinite(interval) or interval <= 0):
-        raise ValueError("win_probability_interval_seconds must be a finite positive number")
     if (isinstance(simulations, bool) or not isinstance(simulations, int) or
             not 100 <= simulations <= 100000):
         raise ValueError("win_probability_simulations must be an integer from 100 to 100000")
-    return WinProbabilitySettings(enabled, display, float(interval), simulations)
+    return WinProbabilitySettings(enabled, display, simulations)
+
+
+def show_probability_phase(settings, elapsed, duration, available=True):
+    """Select the second half of a matchup page for alternating probability."""
+    if not settings.enabled or not available:
+        return False
+    if settings.display == "probability":
+        return True
+    return duration > 0 and elapsed >= duration / 2
 
 
 def estimate_uncertainty(actual, projected):

@@ -5,8 +5,10 @@ from pathlib import Path
 
 from win_probability import (estimate_uncertainty,
                              resolve_win_probability_settings,
+                             show_probability_phase,
                              simulate_matchup,
-                             update_matchup_probabilities)
+                             update_matchup_probabilities,
+                             WinProbabilitySettings)
 
 
 class WinProbabilityTests(unittest.TestCase):
@@ -50,13 +52,11 @@ class WinProbabilityTests(unittest.TestCase):
             path.write_text(json.dumps({
                 "show_win_probability": True,
                 "win_probability_display": "probability",
-                "win_probability_interval_seconds": 4,
                 "win_probability_simulations": 2500,
             }))
             settings = resolve_win_probability_settings(config=path)
             self.assertTrue(settings.enabled)
             self.assertEqual(settings.display, "probability")
-            self.assertEqual(settings.interval_seconds, 4)
             self.assertEqual(settings.simulations, 2500)
             self.assertEqual(
                 resolve_win_probability_settings(False, 1000, path).simulations,
@@ -65,6 +65,17 @@ class WinProbabilityTests(unittest.TestCase):
             path.write_text(json.dumps({"win_probability_simulations": 10}))
             with self.assertRaisesRegex(ValueError, "100 to 100000"):
                 resolve_win_probability_settings(config=path)
+
+    def test_alternate_phase_uses_each_matchups_halfway_point(self):
+        settings = WinProbabilitySettings(True, "alternate", 5000)
+        self.assertFalse(show_probability_phase(settings, 0, 10))
+        self.assertFalse(show_probability_phase(settings, 4.99, 10))
+        self.assertTrue(show_probability_phase(settings, 5, 10))
+        self.assertTrue(show_probability_phase(settings, 9.99, 10))
+        self.assertFalse(show_probability_phase(settings, 7, 10, available=False))
+
+        continuous = WinProbabilitySettings(True, "probability", 5000)
+        self.assertTrue(show_probability_phase(continuous, 0, 10))
 
 
 if __name__ == "__main__":
