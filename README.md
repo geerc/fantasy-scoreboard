@@ -37,10 +37,9 @@ the whole-number score in a block-style scoreboard font. The hundredths are
 rendered as a superscript without a decimal point. Projection change chevrons
 are intentionally omitted from this compact layout.
 Win probability is vertically centered in the open band below the logos.
-For median-enabled leagues, the layout permanently reserves two medal slots at
-the center seam: team 1 on the left side of center and team 2 on the right.
-Scores retain the same outer positions whether the current team has earned the
-medal or not.
+For median-enabled leagues, each earned medal appears directly beneath that
+team's superscript hundredths. Medals are omitted from the win-probability
+phase, where no decimal superscript is shown.
 
 Projected scores are white until their rolling projection moves by a configured
 number of points. A significant increase turns that team's score green; a

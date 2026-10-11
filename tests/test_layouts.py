@@ -132,29 +132,34 @@ class LayoutTests(unittest.TestCase):
         self.assertFalse(any(args[5] in ("Purple Reign", "Gridiron Gurus")
                              for args in rendered))
 
-    def test_large_logo_median_slots_are_fixed_at_center_seam(self):
+    def test_large_logo_medals_are_below_superscript_hundredths(self):
         replay = test_scoreboard_replay.ReplayTests()
         replay.setUp()
         fixture = deepcopy(replay.fixture)
         fixture["league_average_match"] = True
         graphics, matrix = replay.render_headless(
             fixture, layout="large_logos", rotation_interval=1000)
-        positions = [call.args[1:3]
-                     for call in matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
-        self.assertIn((24, 24), positions)
+        positions = [call.args[1:3] for call in
+                     matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
+        team1_fraction_x = next(
+            call.args[2] for call in graphics.DrawText.call_args_list
+            if call.args[5] == "70")
+        self.assertIn((team1_fraction_x, 26), positions)
         second_fixture = deepcopy(fixture)
         second_fixture["live_projections"]["1"] = 0
         second_fixture["live_projections"]["3"] = 1000
-        _, second_matrix = replay.render_headless(
+        second_graphics, second_matrix = replay.render_headless(
             second_fixture, layout="large_logos", rotation_interval=1000)
         second_positions = [
             call.args[1:3] for call in
             second_matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
-        self.assertIn((32, 24), second_positions)
+        team2_fraction_x = next(
+            call.args[2] for call in second_graphics.DrawText.call_args_list
+            if call.args[5] == "00" and call.args[2] > 32)
+        self.assertIn((team2_fraction_x, 26), second_positions)
         score_calls = [call.args for call in graphics.DrawText.call_args_list
                        if call.args[3] == 31]
-        # Scores keep their outer positions while the two center slots remain
-        # reserved even on frames where one of the medals is absent.
+        # Scores retain their established positions when the medals move.
         self.assertTrue(any(args[2] < 12 for args in score_calls))
         self.assertTrue(any(args[2] >= 39 for args in score_calls))
 
