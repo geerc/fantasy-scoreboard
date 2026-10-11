@@ -589,16 +589,15 @@ def main():
             return start_x, total_width
 
         median_enabled = median is not None
-        # Median-enabled leagues permanently reserve the outermost eight pixels:
-        # x=0..7 for team 1 and x=56..63 for team 2. Scores stay in their fixed
-        # inner regions whether or not the current team earned the medal.
-        center1 = 20 if median_enabled else 12
+        # Median-enabled leagues permanently reserve the rightmost eight pixels
+        # of each 32-pixel team half, whether or not that team earned the medal.
+        center1 = 12
         center2 = 44 if median_enabled else 52
         draw_compact_score(value1, color1, center1)
         draw_compact_score(value2, color2, center2)
         if median_enabled and team1.get("projection") is not None and \
                 team1["projection"] > median:
-            canvas.SetImage(median_medal, 0, 24, False)
+            canvas.SetImage(median_medal, 24, 24, False)
         if median_enabled and team2.get("projection") is not None and \
                 team2["projection"] > median:
             canvas.SetImage(median_medal, 56, 24, False)
