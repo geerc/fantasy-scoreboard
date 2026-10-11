@@ -580,7 +580,8 @@ def main():
                 label = f"{float(value):.0f}%"
                 width = sum(large_score_font.CharacterWidth(ord(char)) for char in label)
                 start_x = center_x - width // 2
-                graphics.DrawText(canvas, large_score_font, start_x, 31, white, label)
+                # Center the seven-pixel face in the 12-pixel band below the logos.
+                graphics.DrawText(canvas, large_score_font, start_x, 29, white, label)
                 return start_x, width
             whole, fraction = f"{float(value):.2f}".split(".")
             whole_width = sum(large_score_font.CharacterWidth(ord(char)) for char in whole)

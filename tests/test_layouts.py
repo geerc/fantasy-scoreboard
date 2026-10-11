@@ -158,6 +158,25 @@ class LayoutTests(unittest.TestCase):
         self.assertTrue(any(args[2] < 12 for args in score_calls))
         self.assertTrue(any(args[2] >= 39 for args in score_calls))
 
+    def test_large_logo_win_probability_is_vertically_centered_below_logos(self):
+        replay = test_scoreboard_replay.ReplayTests()
+        replay.setUp()
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder) / "board.json"
+            config.write_text(json.dumps({
+                "show_win_probability": True,
+                "win_probability_display": "probability",
+                "win_probability_simulations": 100,
+            }))
+            graphics, _ = replay.render_headless(
+                replay.fixture, layout="large_logos", rotation_interval=1000,
+                config=config)
+        probability_calls = [
+            call.args for call in graphics.DrawText.call_args_list
+            if call.args[5].endswith("%")]
+        self.assertTrue(probability_calls)
+        self.assertTrue(all(args[3] == 29 for args in probability_calls))
+
 
 if __name__ == "__main__":
     unittest.main()

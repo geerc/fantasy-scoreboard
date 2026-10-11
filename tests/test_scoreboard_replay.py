@@ -41,7 +41,8 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(Path.cwd(), old_dir)
         self.assertIs(replay.scoreboard.League, original_league)
 
-    def render_headless(self, fixture, layout="classic", rotation_interval=1):
+    def render_headless(self, fixture, layout="classic", rotation_interval=1,
+                        config=None):
         canvas = Mock()
         matrix = Mock(width=64)
         matrix.CreateFrameCanvas.return_value = canvas
@@ -68,7 +69,8 @@ class ReplayTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(SystemExit):
                 replay.run_replay(fixture, rotation_interval=rotation_interval,
-                                  data_refresh_interval=1, layout=layout)
+                                  data_refresh_interval=1, layout=layout,
+                                  config=config)
         return graphics, matrix
 
     def test_production_renderer_rotates_and_refreshes_offline(self):
