@@ -181,6 +181,15 @@ class LayoutTests(unittest.TestCase):
             if call.args[5].endswith("%")]
         self.assertTrue(probability_calls)
         self.assertTrue(all(args[3] == 29 for args in probability_calls))
+        left, right = probability_calls[:2]
+        left_width = sum(
+            graphics.Font.return_value.CharacterWidth(ord(char))
+            for char in left[5])
+        right_width = sum(
+            graphics.Font.return_value.CharacterWidth(ord(char))
+            for char in right[5])
+        self.assertEqual(left[2], 11 - left_width // 2)
+        self.assertEqual(right[2], 52 - right_width // 2)
 
 
 if __name__ == "__main__":

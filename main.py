@@ -594,7 +594,10 @@ def main():
             return fraction_x
 
         median_enabled = median is not None
-        center1 = 12
+        # The odd-width logos are centered at x=11 and x=52. Keep the regular
+        # scores in their established slots, but align probabilities precisely
+        # beneath those logo centers.
+        center1 = 11 if show_win_probability else 12
         center2 = 52
         fraction1_x = draw_compact_score(value1, color1, center1)
         fraction2_x = draw_compact_score(value2, color2, center2)

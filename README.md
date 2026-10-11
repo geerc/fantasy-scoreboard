@@ -36,7 +36,8 @@ Three layouts are available through the config or `--layout`: `classic`,
 the whole-number score in a block-style scoreboard font. The hundredths are
 rendered as a superscript without a decimal point. Projection change chevrons
 are intentionally omitted from this compact layout.
-Win probability is vertically centered in the open band below the logos.
+Win probability is horizontally aligned with each logo's center and vertically
+centered in the open band beneath it.
 For median-enabled leagues, each earned medal appears directly beneath that
 team's superscript hundredths. Medals are omitted from the win-probability
 phase, where no decimal superscript is shown.
