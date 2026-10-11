@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-LAYOUTS = ("classic", "diagonal")
+LAYOUTS = ("classic", "diagonal", "large_logos")
 DEFAULT_CONFIG = Path(__file__).resolve().with_name("board_config.json")
 
 
@@ -24,8 +24,32 @@ def resolve_layout(layout=None, config=None):
             raise ValueError("Board config must be a JSON object")
     selected = layout if layout is not None else settings.get("layout", "classic")
     if selected not in LAYOUTS:
-        raise ValueError(f"Invalid layout {selected!r}; choose classic or diagonal")
+        raise ValueError(
+            f"Invalid layout {selected!r}; choose classic, diagonal, or large_logos")
     return selected
+
+
+def resolve_close_score_threshold(config=None):
+    """Return the projected-score closeness threshold as a decimal fraction."""
+    import math
+    path = Path(config) if config is not None else DEFAULT_CONFIG
+    settings = {}
+    if config is not None or path.exists():
+        with path.open(encoding="utf-8") as stream:
+            settings = json.load(stream)
+        if not isinstance(settings, dict):
+            raise ValueError("Board config must be a JSON object")
+    percent = settings.get("close_score_threshold_percent", 10)
+    if (isinstance(percent, bool) or not isinstance(percent, (int, float)) or
+            not math.isfinite(percent) or not 0 <= percent <= 100):
+        raise ValueError("close_score_threshold_percent must be from 0 to 100")
+    return float(percent) / 100
+
+
+def projected_scores_close(first, second, threshold):
+    """Return whether two projected totals are within a relative threshold."""
+    high = max(abs(float(first)), abs(float(second)))
+    return high > 0 and abs(float(first) - float(second)) / high <= threshold
 
 
 def add_touchdown_arguments(parser):

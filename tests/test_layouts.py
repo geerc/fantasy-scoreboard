@@ -8,7 +8,8 @@ from unittest.mock import patch
 
 from PIL import ImageChops
 
-from layout_config import add_layout_arguments, resolve_layout
+from layout_config import (add_layout_arguments, projected_scores_close,
+                           resolve_close_score_threshold, resolve_layout)
 from test_scoreboard import PROJECT_DIR
 import test_scoreboard_replay
 from name_scroll import NameRenderer
@@ -42,6 +43,17 @@ class LayoutTests(unittest.TestCase):
         args = parser.parse_args(["--layout", "diagonal", "--config", "custom.json"])
         self.assertEqual(args.layout, "diagonal")
         self.assertEqual(args.config, Path("custom.json"))
+
+    def test_close_projection_threshold_is_configurable(self):
+        self.assertTrue(projected_scores_close(109, 120, .10))
+        self.assertFalse(projected_scores_close(105, 120, .10))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "board.json"
+            path.write_text(json.dumps({"close_score_threshold_percent": 7.5}))
+            self.assertEqual(resolve_close_score_threshold(path), .075)
+            path.write_text(json.dumps({"close_score_threshold_percent": 101}))
+            with self.assertRaisesRegex(ValueError, "0 to 100"):
+                resolve_close_score_threshold(path)
 
     def test_long_team_names_are_truncated_with_ellipsis(self):
         renderer = NameRenderer(PROJECT_DIR / "rpi-rgb-led-matrix/fonts/4x6.bdf")
@@ -107,6 +119,19 @@ class LayoutTests(unittest.TestCase):
             self.assertEqual(right_bold.args[2] + len(right.args[5]) * 5, 48)
             self.assertIs(left.args[1], right.args[1])
         matrix.SetImage.assert_not_called()
+
+    def test_large_logo_layout_omits_names_and_uses_superscript_tenths(self):
+        graphics, matrix = self.render("large_logos")
+        image_calls = matrix.CreateFrameCanvas.return_value.SetImage.call_args_list
+        self.assertTrue(any(call.args[0].size == (20, 20) and
+                            call.args[1:3] == (2, 1) for call in image_calls))
+        self.assertTrue(any(call.args[0].size == (20, 20) and
+                            call.args[1:3] == (42, 1) for call in image_calls))
+        rendered = [call.args for call in graphics.DrawText.call_args_list]
+        self.assertTrue(any(args[5] == "148" and args[3] == 31 for args in rendered))
+        self.assertTrue(any(args[5] == "7" and args[3] == 26 for args in rendered))
+        self.assertFalse(any(args[5] in ("Purple Reign", "Gridiron Gurus")
+                             for args in rendered))
 
 
 if __name__ == "__main__":

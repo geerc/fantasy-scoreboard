@@ -24,6 +24,15 @@ RUN_POSES = (
 )
 
 
+def readable_team_color(value):
+    """Use white when an NFL primary color is effectively black."""
+    try:
+        color = ImageColor.getrgb(value or "#ffffff")
+    except ValueError:
+        return (255, 255, 255)
+    return (255, 255, 255) if max(color) <= 40 else color
+
+
 def runner_x(tick):
     return round(-16 + 80 * tick / 99)
 
@@ -129,10 +138,7 @@ class CelebrationRenderer:
         }
         image.paste(self._runner_field(touchdown, frame_index, is_dst), (0, 16))
         if touchdown.kind == "BIG PLAY":
-            try:
-                player_color = ImageColor.getrgb(touchdown.team_color or "#ffffff")
-            except ValueError:
-                player_color = (255, 255, 255)
+            player_color = readable_team_color(touchdown.team_color)
             name_mask = self.names.bitmap(touchdown.name).convert("L")
             name_image = Image.new("RGB", name_mask.size, player_color)
             image.paste(name_image, ((64 - name_image.width) // 2, 1), name_mask)
@@ -148,10 +154,7 @@ class CelebrationRenderer:
         else:
             detail_time = elapsed - duration / 2
             name = self.names.bitmap(touchdown.name)
-            try:
-                player_color = ImageColor.getrgb(touchdown.team_color or "#ffffff")
-            except ValueError:
-                player_color = (255, 255, 255)
+            player_color = readable_team_color(touchdown.team_color)
             if name.width <= 64:
                 mask = name.convert("L")
                 colored_name = Image.new("RGB", mask.size, player_color)

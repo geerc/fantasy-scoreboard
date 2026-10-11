@@ -10,6 +10,7 @@ from sleeper_wrapper import League
 from name_scroll import NameRenderer
 from layout_config import (add_layout_arguments, resolve_layout,
                            add_touchdown_arguments, resolve_touchdown_settings,
+                           projected_scores_close, resolve_close_score_threshold,
                            DEFAULT_CONFIG)
 from touchdowns import CelebrationQueue
 from touchdown_source import create_touchdown_monitor, create_league_touchdown_monitor
@@ -117,6 +118,7 @@ def main():
     effective_config = args.config or (DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None)
     try:
         layout = resolve_layout(args.layout, args.config)
+        close_score_threshold = resolve_close_score_threshold(args.config)
         touchdown_duration, touchdown_poll_interval = resolve_touchdown_settings(
             args.touchdown_duration, args.touchdown_poll_interval, args.config)
         multi_config = load_multi_league_config(effective_config)
@@ -392,6 +394,9 @@ def main():
         if layout == "diagonal":
             draw_diagonal(canvas, team1_data, team2_data, show_projection, median,
                           show_win_probability)
+        elif layout == "large_logos":
+            draw_large_logos(canvas, team1_data, team2_data, show_projection,
+                             median, show_win_probability)
         else:
             draw_logos(canvas, team1_data['logo'], team2_data['logo'])
             canvas.SetImage(name_renderer.team_window(team1_data.get('name'), 30), 1, 17, False)
@@ -436,6 +441,16 @@ def main():
             text = f"{float(value):.1f}".rstrip("0").rstrip(".")
             return text
         return str(value)
+
+    def score_colors(points1, points2, show_projection=False):
+        """Use white when projected totals fall within the configured margin."""
+        if points1 == points2:
+            return white, white
+        close = (show_projection and projected_scores_close(
+            points1, points2, close_score_threshold))
+        if close:
+            return white, white
+        return ((green, red) if points1 > points2 else (red, green))
 
     def draw_scores(canvas, team1, team2, show_projection=False,
                     show_win_probability=False):
@@ -483,15 +498,10 @@ def main():
             team2_x = left_x + min_sep
 
         # draw using color rules
-        if team1_score > team2_score:
-            draw_score_text(canvas, left_x, baseline_y, green, s1)
-            draw_score_text(canvas, team2_x, baseline_y, red, s2)
-        elif team2_score > team1_score:
-            draw_score_text(canvas, left_x, baseline_y, red, s1)
-            draw_score_text(canvas, team2_x, baseline_y, green, s2)
-        else:
-            draw_score_text(canvas, left_x, baseline_y, white, s1)
-            draw_score_text(canvas, team2_x, baseline_y, white, s2)
+        color1, color2 = score_colors(
+            team1_score, team2_score, show_projection and not show_win_probability)
+        draw_score_text(canvas, left_x, baseline_y, color1, s1)
+        draw_score_text(canvas, team2_x, baseline_y, color2, s2)
         if show_projection and not show_win_probability:
             trend1 = team1.get("projection_trend", 0)
             trend2 = team2.get("projection_trend", 0)
@@ -524,8 +534,8 @@ def main():
                    team2.get("projection") if show_projection else team2["points"])
         points1 = team1["points"] if points1 is None else points1
         points2 = team2["points"] if points2 is None else points2
-        color1 = green if points1 > points2 else red if points1 < points2 else white
-        color2 = green if points2 > points1 else red if points2 < points1 else white
+        color1, color2 = score_colors(
+            points1, points2, show_projection and not show_win_probability)
         score1 = display_points(team1, show_projection, show_win_probability)
         score2 = display_points(team2, show_projection, show_win_probability)
         # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
@@ -549,6 +559,60 @@ def main():
         if not show_win_probability and median is not None and points2 > median:
             medal_x = arrow2_x - 8 if trend2 else right_x - 8
             canvas.SetImage(median_medal, medal_x, 25, False)
+
+    def draw_large_logos(canvas, team1, team2, show_projection=False, median=None,
+                         show_win_probability=False):
+        """Large opposing logos with compact scores and superscript tenths."""
+        canvas.SetImage(preload_logo(team1["logo"]).resize((20, 20)), 2, 1, False)
+        canvas.SetImage(preload_logo(team2["logo"]).resize((20, 20)), 42, 1, False)
+        value1 = (team1.get("win_probability") if show_win_probability else
+                  team1.get("projection") if show_projection else team1.get("points", 0))
+        value2 = (team2.get("win_probability") if show_win_probability else
+                  team2.get("projection") if show_projection else team2.get("points", 0))
+        value1 = team1.get("points", 0) if value1 is None else value1
+        value2 = team2.get("points", 0) if value2 is None else value2
+        color1, color2 = score_colors(
+            value1, value2, show_projection and not show_win_probability)
+
+        def score_parts(value):
+            numeric = round(float(value), 1)
+            whole = str(int(numeric))
+            tenth = str(int(round(abs(numeric - int(numeric)) * 10)) % 10)
+            return whole, tenth
+
+        def draw_compact_score(value, color, center_x):
+            if show_win_probability:
+                label = f"{float(value):.0f}%"
+                width = sum(score_font.CharacterWidth(ord(char)) for char in label) + 1
+                start_x = center_x - width // 2
+                draw_score_text(canvas, start_x, 31, color, label)
+                return start_x, width
+            whole, tenth = score_parts(value)
+            whole_width = sum(score_font.CharacterWidth(ord(char)) for char in whole) + 1
+            tenth_width = text_font.CharacterWidth(ord(tenth))
+            total_width = whole_width + tenth_width
+            start_x = center_x - total_width // 2
+            draw_score_text(canvas, start_x, 31, color, whole)
+            graphics.DrawText(canvas, text_font, start_x + whole_width, 26, color, tenth)
+            return start_x, total_width
+
+        start1, width1 = draw_compact_score(value1, color1, 12)
+        start2, width2 = draw_compact_score(value2, color2, 52)
+        show_trends = show_projection and not show_win_probability
+        trend1 = team1.get("projection_trend", 0) if show_trends else 0
+        trend2 = team2.get("projection_trend", 0) if show_trends else 0
+        arrow1_x = start1 + width1 + 1
+        arrow2_x = start2 - 6
+        if trend1:
+            canvas.SetImage(projection_arrows[trend1], arrow1_x, 25, False)
+        if trend2:
+            canvas.SetImage(projection_arrows[trend2], arrow2_x, 25, False)
+        if not show_win_probability and median is not None and value1 > median:
+            medal_x = arrow1_x + 6 if trend1 else start1 + width1
+            canvas.SetImage(median_medal, medal_x, 24, False)
+        if not show_win_probability and median is not None and value2 > median:
+            medal_x = arrow2_x - 8 if trend2 else start2 - 8
+            canvas.SetImage(median_medal, medal_x, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""
@@ -775,7 +839,8 @@ def main():
             last_frame = last_tick - 1
             celebrations = CelebrationQueue(touchdown_duration)
             celebration_renderer = CelebrationRenderer(name_renderer)
-            event_merger = CrossLeagueCelebrations(settings.users)
+            event_merger = CrossLeagueCelebrations(
+                settings.users, settings.celebration_league_priority)
             was_celebrating = False
             print("Press CTRL-C to stop.")
             while True:

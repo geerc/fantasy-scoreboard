@@ -27,13 +27,14 @@ class MultiLeagueConfigTests(unittest.TestCase):
                 "default_display_users": ["me"],
                 "show_all_matchups": False,
                 "show_league_pages": False,
+                "celebration_league_priority": ["Two", "one"],
                 "espn_credentials": {"home": {"swid_env": "MY_SWID",
                                                  "espn_s2_env": "MY_ESPN_S2"}},
                 "leagues": [
                     {"key": "one", "platform": "sleeper", "league_id": "123",
                      "label": "One"},
                     {"key": "two", "platform": "espn", "league_id": "456",
-                     "credentials": "home", "display_users": [],
+                     "label": "Two", "credentials": "home", "display_users": [],
                      "show_league_page": True, "show_all_matchups": True},
                 ],
             }))
@@ -43,6 +44,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
         self.assertFalse(config.show_all_matchups)
         self.assertTrue(config.leagues[1].show_all_matchups)
         self.assertFalse(config.show_league_pages)
+        self.assertEqual(config.celebration_league_priority, ("two", "one"))
         with patch.dict(os.environ, {"MY_SWID": "{ABC}", "MY_ESPN_S2": "secret"}):
             self.assertEqual(config.credentials["home"].cookies(), {
                 "SWID": "{ABC}", "espn_s2": "secret"})
@@ -53,6 +55,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
             ({"show_league_pages": "yes"}, "true or false"),
             ({"league_page_seconds": 0}, "positive number"),
             ({"show_all_matchups": "yes"}, "true or false"),
+            ({"celebration_league_priority": ["missing"]}, "unknown leagues"),
         )
         for change, message in changes:
             with self.subTest(change=change), tempfile.TemporaryDirectory() as folder:

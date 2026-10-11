@@ -40,6 +40,24 @@ class MultiLeagueCelebrationTests(unittest.TestCase):
         two = event("two", "B", "{ME}", "espn:two:2026:1:401:987:TOUCHDOWN")
         self.assertEqual(real_play_key(one), real_play_key(two))
 
+    def test_configured_user_ownership_precedes_league_priority(self):
+        merge = CrossLeagueCelebrations(self.users, ("preferred", "mine"))
+        copies = [event("preferred", "Someone Else", "not-me"),
+                  event("mine", "My Team", "sleep-me")]
+        self.assertEqual(merge.merge(copies)[0].fantasy_team, "My Team")
+
+    def test_hierarchy_selects_team_when_user_owns_player_multiple_times(self):
+        merge = CrossLeagueCelebrations(self.users, ("second", "first"))
+        copies = [event("first", "Lower Team", "sleep-me"),
+                  event("second", "Priority Team", "{ME}")]
+        self.assertEqual(merge.merge(copies)[0].fantasy_team, "Priority Team")
+
+    def test_hierarchy_applies_to_non_user_occurrences(self):
+        merge = CrossLeagueCelebrations(self.users, ("second", "first"))
+        copies = [event("first", "Lower Team", "stranger-one"),
+                  event("second", "Priority Team", "stranger-two")]
+        self.assertEqual(merge.merge(copies)[0].fantasy_team, "Priority Team")
+
 
 if __name__ == "__main__":
     unittest.main()

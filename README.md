@@ -30,6 +30,18 @@ venv/bin/python main.py --emulator \
 The same defaults can be set with `SLEEPER_LEAGUE_ID`, `DISPLAY_WEEK`,
 `ROTATION_INTERVAL`, and `DATA_REFRESH_INTERVAL` environment variables.
 
+Three layouts are available through the config or `--layout`: `classic`,
+`diagonal`, and `large_logos`. The `large_logos` layout omits team names, puts
+20×20 team logos in the upper corners, and draws scores beneath them. The
+tenths digit is rendered as a superscript without a decimal point.
+
+Projected scores within 10% of one another are both white by default instead
+of red and green. Adjust that margin in the board config if desired:
+
+```json
+"close_score_threshold_percent": 10
+```
+
 ## Multiple Sleeper and ESPN leagues
 
 Copy `board_config.multileague.example.json` and pass it with `--config`:
@@ -67,6 +79,24 @@ used when a league omits `display_users`; a top-level `show_all_matchups` remain
 available as a backward-compatible default when a league omits its own value.
 This filter does not decide celebration ownership: all configured users remain
 eligible for cross-league attribution.
+
+Touchdown and big-play team attribution can use an ordered league hierarchy.
+Entries may be stable league keys or unique league labels:
+
+```json
+"celebration_league_priority": [
+  "sypip",
+  "Jtown Dynasty",
+  "Pimp to Pimp"
+]
+```
+
+If a configured user starts the player in any league, occurrences owned by
+that user take priority over all other owners. When the player appears on more
+than one of that user's teams, the first matching league in this list supplies
+the revealed fantasy-team name. If no configured user owns the player, the
+same hierarchy chooses among the remaining teams. Without this setting, the
+original cross-league attribution behavior is retained.
 
 Sleeper IDs can be copied from Sleeper's league users API. An ESPN member ID is
 the `id` associated with the owner in the league API response (often enclosed
@@ -134,6 +164,10 @@ label; ownership by different users/teams reveals no attribution. ESPN starter
 offensive events use ESPN roster and play-by-play data. ESPN D/ST attribution
 uses the roster entry's NFL team mapping when ESPN provides it; missing provider
 metadata cannot be inferred safely.
+
+Player names normally use the scoring NFL team's primary color during big-play
+and touchdown animations. Black and near-black primary colors automatically
+fall back to white so names remain readable on the matrix.
 
 ## Offline development replay
 

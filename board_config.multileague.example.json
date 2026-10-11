@@ -1,5 +1,6 @@
 {
   "layout": "diagonal",
+  "close_score_threshold_percent": 10,
   "touchdown_duration_seconds": 10,
   "show_win_probability": true,
   "win_probability_display": "alternate",
@@ -7,6 +8,7 @@
   "show_league_pages": true,
   "league_page_seconds": 5,
   "default_display_users": ["christian"],
+  "celebration_league_priority": ["sypip", "private-espn", "public-espn"],
   "users": {
     "christian": {
       "label": "Christian",

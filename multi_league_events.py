@@ -15,8 +15,11 @@ def real_play_key(event):
 class CrossLeagueCelebrations:
     """Suppress the same play across leagues and choose one attribution label."""
 
-    def __init__(self, users):
+    def __init__(self, users, league_priority=()):
         self.users = users
+        self.league_priority = tuple(league_priority)
+        self.priority_index = {
+            league: index for index, league in enumerate(self.league_priority)}
         self.owner_keys = {}
         for key, user in users.items():
             for owner_id in (user.sleeper_user_id, user.espn_owner_id):
@@ -34,6 +37,18 @@ class CrossLeagueCelebrations:
                 continue
             self.seen.add(key)
             first = copies[0]
+            if self.league_priority:
+                owned = [event for event in copies
+                         if self.owner_keys.get(str(event.fantasy_owner))]
+                candidates = owned or copies
+                selected = min(
+                    enumerate(candidates),
+                    key=lambda row: (
+                        self.priority_index.get(
+                            row[1].fantasy_league, len(self.priority_index)),
+                        row[0]))[1]
+                output.append(replace(first, fantasy_team=selected.fantasy_team))
+                continue
             occurrences = {(event.fantasy_league, event.fantasy_team,
                             self.owner_keys.get(str(event.fantasy_owner))) for event in copies}
             owners = {row[2] for row in occurrences if row[2]}

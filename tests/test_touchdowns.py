@@ -12,7 +12,7 @@ from PIL import Image, ImageChops
 
 from layout_config import resolve_touchdown_settings
 from name_scroll import NameRenderer
-from touchdown_animation import ASSET, CelebrationRenderer
+from touchdown_animation import ASSET, CelebrationRenderer, readable_team_color
 from touchdown_source import SleeperTouchdownSource
 from touchdowns import Touchdown, TouchdownDetector, CelebrationQueue, ReplayTouchdownMonitor, dst_kind, play_actor
 import test_scoreboard as replay
@@ -274,6 +274,11 @@ class PlaybackTests(unittest.TestCase):
         label_x = (64 - label.width) // 2
         self.assertIsNone(ImageChops.difference(
             label, frame.crop((label_x, 9, label_x + label.width, 15))).getbbox())
+
+    def test_black_and_near_black_team_colors_fall_back_to_white(self):
+        self.assertEqual(readable_team_color("#000000"), (255, 255, 255))
+        self.assertEqual(readable_team_color("#202020"), (255, 255, 255))
+        self.assertEqual(readable_team_color("#4f2683"), (79, 38, 131))
 
     def test_fantasy_team_reveals_and_clips_without_ellipsis(self):
         names = NameRenderer(replay.PROJECT_DIR / "rpi-rgb-led-matrix/fonts/4x6.bdf")

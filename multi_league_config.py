@@ -51,6 +51,7 @@ class MultiLeagueConfig:
     show_league_pages: bool = True
     league_page_seconds: float = 5.0
     show_all_matchups: bool = None
+    celebration_league_priority: tuple = ()
 
 
 def _string(value, path):
@@ -161,5 +162,23 @@ def load_multi_league_config(path):
     if (isinstance(page_seconds, bool) or not isinstance(page_seconds, (int, float))
             or page_seconds <= 0):
         raise ValueError("league_page_seconds must be a positive number")
+    priority = raw.get("celebration_league_priority", [])
+    if not isinstance(priority, list) or any(
+            not isinstance(value, str) or not value.strip() for value in priority):
+        raise ValueError(
+            "celebration_league_priority must be a list of league keys or labels")
+    league_keys = {league.key: league.key for league in leagues}
+    for league in leagues:
+        if sum(other.label == league.label for other in leagues) == 1:
+            league_keys.setdefault(league.label, league.key)
+    unknown_priority = [value for value in priority if value not in league_keys]
+    if unknown_priority:
+        raise ValueError(
+            f"celebration_league_priority references unknown leagues: "
+            f"{sorted(unknown_priority)}")
+    normalized_priority = [league_keys[value] for value in priority]
+    if len(normalized_priority) != len(set(normalized_priority)):
+        raise ValueError("celebration_league_priority cannot contain duplicates")
     return MultiLeagueConfig(
-        users, tuple(leagues), credentials, show_pages, float(page_seconds), show_all)
+        users, tuple(leagues), credentials, show_pages, float(page_seconds),
+        show_all, tuple(normalized_priority))
