@@ -447,8 +447,8 @@ def main():
         return str(value)
 
     def score_color(team, show_projection=False, show_win_probability=False):
-        """Color only significant projection movement; probabilities stay white."""
-        if show_win_probability or not show_projection:
+        """Keep projection and probability phases on the same movement color."""
+        if not show_projection:
             return white
         direction = team.get("projection_color_direction", 0)
         return green if direction > 0 else red if direction < 0 else white
@@ -581,7 +581,7 @@ def main():
                 width = sum(large_score_font.CharacterWidth(ord(char)) for char in label)
                 start_x = center_x - width // 2
                 # Center the seven-pixel face in the 12-pixel band below the logos.
-                graphics.DrawText(canvas, large_score_font, start_x, 29, white, label)
+                graphics.DrawText(canvas, large_score_font, start_x, 29, color, label)
                 return None
             whole, fraction = f"{float(value):.2f}".split(".")
             whole_width = sum(large_score_font.CharacterWidth(ord(char)) for char in whole)

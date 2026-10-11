@@ -44,8 +44,9 @@ phase, where no decimal superscript is shown.
 Projected scores are white until their rolling projection moves by a configured
 number of points. A significant increase turns that team's score green; a
 significant decrease turns it red. Small changes accumulate against the last
-baseline, and crossing the threshold resets the baseline. Win probabilities
-are always white. Configure the threshold in points:
+baseline, and crossing the threshold resets the baseline. Each team's win
+probability inherits the same white, green, or red state as its projected
+score. Configure the threshold in points:
 
 ```json
 "projection_color_threshold_points": 2
