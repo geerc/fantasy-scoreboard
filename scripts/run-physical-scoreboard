@@ -3,4 +3,4 @@ set -euo pipefail
 
 PROJECT_DIR=/home/christiangeer/fantasy-scoreboard
 
-exec "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/main.py" --layout diagonal
+exec "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/main.py"
