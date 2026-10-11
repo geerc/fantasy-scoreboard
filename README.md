@@ -32,9 +32,10 @@ The same defaults can be set with `SLEEPER_LEAGUE_ID`, `DISPLAY_WEEK`,
 
 Three layouts are available through the config or `--layout`: `classic`,
 `diagonal`, and `large_logos`. The `large_logos` layout omits team names, puts
-20×20 team logos in the upper corners, and draws scores beneath them. The
-tenths digit is rendered as a superscript without a decimal point. Projection
-change chevrons are intentionally omitted from this compact layout.
+19×19 team logos in the upper corners with a gap above the scores, and draws
+the whole-number score in a block-style scoreboard font. The hundredths are
+rendered as a superscript without a decimal point. Projection change chevrons
+are intentionally omitted from this compact layout.
 For median-enabled leagues, the layout permanently reserves two medal slots at
 the center seam: team 1 on the left side of center and team 2 on the right.
 Scores retain the same outer positions whether the current team has earned the

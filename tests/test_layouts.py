@@ -121,13 +121,14 @@ class LayoutTests(unittest.TestCase):
     def test_large_logo_layout_omits_names_and_uses_superscript_hundredths(self):
         graphics, matrix = self.render("large_logos")
         image_calls = matrix.CreateFrameCanvas.return_value.SetImage.call_args_list
-        self.assertTrue(any(call.args[0].size == (20, 20) and
+        self.assertTrue(any(call.args[0].size == (19, 19) and
                             call.args[1:3] == (2, 1) for call in image_calls))
-        self.assertTrue(any(call.args[0].size == (20, 20) and
-                            call.args[1:3] == (42, 1) for call in image_calls))
+        self.assertTrue(any(call.args[0].size == (19, 19) and
+                            call.args[1:3] == (43, 1) for call in image_calls))
         rendered = [call.args for call in graphics.DrawText.call_args_list]
         self.assertTrue(any(args[5] == "148" and args[3] == 31 for args in rendered))
         self.assertTrue(any(args[5] == "70" and args[3] == 26 for args in rendered))
+        graphics.Font.return_value.LoadFont.assert_any_call("fonts/scoreboard-5x7.bdf")
         self.assertFalse(any(args[5] in ("Purple Reign", "Gridiron Gurus")
                              for args in rendered))
 

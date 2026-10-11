@@ -203,6 +203,9 @@ def main():
 
         score_font = graphics.Font()
         score_font.LoadFont("rpi-rgb-led-matrix/fonts/5x7.bdf")
+
+        large_score_font = graphics.Font()
+        large_score_font.LoadFont("fonts/scoreboard-5x7.bdf")
     except Exception as e:
         logger.exception("Failed to load fonts. Check font path and that rpi-rgb-led-matrix is installed.")
         raise
@@ -561,8 +564,8 @@ def main():
     def draw_large_logos(canvas, team1, team2, show_projection=False, median=None,
                          show_win_probability=False):
         """Large opposing logos with compact scores and superscript tenths."""
-        canvas.SetImage(preload_logo(team1["logo"]).resize((20, 20)), 2, 1, False)
-        canvas.SetImage(preload_logo(team2["logo"]).resize((20, 20)), 42, 1, False)
+        canvas.SetImage(preload_logo(team1["logo"]).resize((19, 19)), 2, 1, False)
+        canvas.SetImage(preload_logo(team2["logo"]).resize((19, 19)), 43, 1, False)
         value1 = (team1.get("win_probability") if show_win_probability else
                   team1.get("projection") if show_projection else team1.get("points", 0))
         value2 = (team2.get("win_probability") if show_win_probability else
@@ -575,16 +578,16 @@ def main():
         def draw_compact_score(value, color, center_x):
             if show_win_probability:
                 label = f"{float(value):.0f}%"
-                width = sum(score_font.CharacterWidth(ord(char)) for char in label)
+                width = sum(large_score_font.CharacterWidth(ord(char)) for char in label)
                 start_x = center_x - width // 2
-                graphics.DrawText(canvas, score_font, start_x, 31, white, label)
+                graphics.DrawText(canvas, large_score_font, start_x, 31, white, label)
                 return start_x, width
             whole, fraction = f"{float(value):.2f}".split(".")
-            whole_width = sum(score_font.CharacterWidth(ord(char)) for char in whole)
+            whole_width = sum(large_score_font.CharacterWidth(ord(char)) for char in whole)
             fraction_width = sum(text_font.CharacterWidth(ord(char)) for char in fraction)
             total_width = whole_width + fraction_width
             start_x = center_x - total_width // 2
-            graphics.DrawText(canvas, score_font, start_x, 31, color, whole)
+            graphics.DrawText(canvas, large_score_font, start_x, 31, color, whole)
             graphics.DrawText(canvas, text_font, start_x + whole_width, 26, color, fraction)
             return start_x, total_width
 
