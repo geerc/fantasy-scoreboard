@@ -102,6 +102,13 @@ the revealed fantasy-team name. If no configured user owns the player, the
 same hierarchy chooses among the remaining teams. Without this setting, the
 original cross-league attribution behavior is retained.
 
+The board waits briefly for the same play to arrive from slower league APIs
+before choosing attribution. The default is five seconds and can be adjusted:
+
+```json
+"celebration_attribution_wait_seconds": 5
+```
+
 Sleeper IDs can be copied from Sleeper's league users API. An ESPN member ID is
 the `id` associated with the owner in the league API response (often enclosed
 in braces), not the numeric fantasy team ID. ESPN public leagues require only

@@ -52,6 +52,7 @@ class MultiLeagueConfig:
     league_page_seconds: float = 5.0
     show_all_matchups: bool = None
     celebration_league_priority: tuple = ()
+    celebration_attribution_wait_seconds: float = 5.0
 
 
 def _string(value, path):
@@ -179,6 +180,12 @@ def load_multi_league_config(path):
     normalized_priority = [league_keys[value] for value in priority]
     if len(normalized_priority) != len(set(normalized_priority)):
         raise ValueError("celebration_league_priority cannot contain duplicates")
+    attribution_wait = raw.get("celebration_attribution_wait_seconds", 5)
+    if (isinstance(attribution_wait, bool) or
+            not isinstance(attribution_wait, (int, float)) or
+            not 0 <= attribution_wait <= 30):
+        raise ValueError(
+            "celebration_attribution_wait_seconds must be from 0 to 30")
     return MultiLeagueConfig(
         users, tuple(leagues), credentials, show_pages, float(page_seconds),
-        show_all, tuple(normalized_priority))
+        show_all, tuple(normalized_priority), float(attribution_wait))

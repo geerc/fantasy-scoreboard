@@ -58,6 +58,18 @@ class MultiLeagueCelebrationTests(unittest.TestCase):
                   event("second", "Priority Team", "stranger-two")]
         self.assertEqual(merge.merge(copies)[0].fantasy_team, "Priority Team")
 
+    def test_collection_window_waits_for_later_user_owned_copy(self):
+        merge = CrossLeagueCelebrations(
+            self.users, ("preferred", "mine"), settle_seconds=5)
+        early = event("preferred", "Someone Else", "not-me")
+        mine = event("mine", "My Team", "sleep-me")
+        self.assertEqual(merge.merge([early], now=10), [])
+        self.assertEqual(merge.merge([mine], now=13), [])
+        result = merge.merge([], now=15)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].fantasy_team, "My Team")
+        self.assertEqual(merge.merge([early], now=20), [])
+
 
 if __name__ == "__main__":
     unittest.main()

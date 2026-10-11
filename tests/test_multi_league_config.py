@@ -28,6 +28,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
                 "show_all_matchups": False,
                 "show_league_pages": False,
                 "celebration_league_priority": ["Two", "one"],
+                "celebration_attribution_wait_seconds": 7,
                 "espn_credentials": {"home": {"swid_env": "MY_SWID",
                                                  "espn_s2_env": "MY_ESPN_S2"}},
                 "leagues": [
@@ -45,6 +46,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
         self.assertTrue(config.leagues[1].show_all_matchups)
         self.assertFalse(config.show_league_pages)
         self.assertEqual(config.celebration_league_priority, ("two", "one"))
+        self.assertEqual(config.celebration_attribution_wait_seconds, 7)
         with patch.dict(os.environ, {"MY_SWID": "{ABC}", "MY_ESPN_S2": "secret"}):
             self.assertEqual(config.credentials["home"].cookies(), {
                 "SWID": "{ABC}", "espn_s2": "secret"})
@@ -56,6 +58,7 @@ class MultiLeagueConfigTests(unittest.TestCase):
             ({"league_page_seconds": 0}, "positive number"),
             ({"show_all_matchups": "yes"}, "true or false"),
             ({"celebration_league_priority": ["missing"]}, "unknown leagues"),
+            ({"celebration_attribution_wait_seconds": -1}, "0 to 30"),
         )
         for change, message in changes:
             with self.subTest(change=change), tempfile.TemporaryDirectory() as folder:

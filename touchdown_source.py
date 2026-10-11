@@ -26,8 +26,9 @@ def get_json(url, **params):
 
 
 class SleeperTouchdownSource:
-    def __init__(self, league_id):
+    def __init__(self, league_id, fantasy_league=None):
         self.league_id = league_id
+        self.fantasy_league = fantasy_league or league_id
         self.league = None
         self.players = None
         self.roster_names = None
@@ -132,7 +133,7 @@ class SleeperTouchdownSource:
         return {"context": [self.league_id, season, season_type, week],
                 "starters": starters, "owned_players": owned_players, "players": players, "stats": stats, "games": games,
                 "team_colors": team_colors, "fantasy_teams": fantasy_teams,
-                "fantasy_owners": fantasy_owners, "fantasy_league": self.league_id,
+                "fantasy_owners": fantasy_owners, "fantasy_league": self.fantasy_league,
                 "play_by_play_ready": play_by_play_ready}
 
 
@@ -271,7 +272,7 @@ class EspnTouchdownSource:
 
 def create_league_touchdown_monitor(config, credentials, week, interval=30):
     if config.platform == "sleeper":
-        source = SleeperTouchdownSource(config.league_id)
+        source = SleeperTouchdownSource(config.league_id, config.key)
     else:
         source = EspnTouchdownSource(config, credentials)
     return TouchdownMonitor(config.league_id, week, interval, source)

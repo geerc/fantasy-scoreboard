@@ -362,12 +362,13 @@ class SourceTests(unittest.TestCase):
             ]}]}}
             raise AssertionError(url)
         with patch("touchdown_source.get_json", side_effect=get):
-            source = SleeperTouchdownSource("league")
+            source = SleeperTouchdownSource("league", "league-key")
             result = source.poll(8)
             source.poll(8)
         self.assertEqual(result["context"], ["league", "2025", "regular", 8])
         self.assertEqual(result["starters"], ["11647", "IND"])
         self.assertEqual(result["fantasy_teams"]["11647"], "Gridiron Kings")
+        self.assertEqual(result["fantasy_league"], "league-key")
         self.assertTrue(any('/stats/nfl/regular/2025/8' in url for url, _ in calls))
         self.assertEqual(sum(url.endswith('/players/nfl') for url, _ in calls), 1)
         self.assertTrue(result["play_by_play_ready"])

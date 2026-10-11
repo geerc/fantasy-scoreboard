@@ -845,7 +845,8 @@ def main():
             celebrations = CelebrationQueue(touchdown_duration)
             celebration_renderer = CelebrationRenderer(name_renderer)
             event_merger = CrossLeagueCelebrations(
-                settings.users, settings.celebration_league_priority)
+                settings.users, settings.celebration_league_priority,
+                settings.celebration_attribution_wait_seconds)
             was_celebrating = False
             print("Press CTRL-C to stop.")
             while True:
@@ -890,7 +891,7 @@ def main():
                                     runtime["matchups"],
                                     win_probability_settings.simulations,
                                     runtime["uncertainties"])
-                events = event_merger.merge(raw_events)
+                events = event_merger.merge(raw_events, now)
                 celebration = celebrations.step(now, events)
                 if celebration:
                     event, elapsed = celebration

@@ -9,6 +9,7 @@
   "league_page_seconds": 5,
   "default_display_users": ["christian"],
   "celebration_league_priority": ["sypip", "private-espn", "public-espn"],
+  "celebration_attribution_wait_seconds": 5,
   "users": {
     "christian": {
       "label": "Christian",

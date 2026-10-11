@@ -1,6 +1,7 @@
 """Cross-league celebration deduplication and attribution."""
 
 from dataclasses import replace
+import time
 
 
 def real_play_key(event):
@@ -15,7 +16,7 @@ def real_play_key(event):
 class CrossLeagueCelebrations:
     """Suppress the same play across leagues and choose one attribution label."""
 
-    def __init__(self, users, league_priority=()):
+    def __init__(self, users, league_priority=(), settle_seconds=0):
         self.users = users
         self.league_priority = tuple(league_priority)
         self.priority_index = {
@@ -26,37 +27,53 @@ class CrossLeagueCelebrations:
                 if owner_id:
                     self.owner_keys[str(owner_id)] = key
         self.seen = set()
+        self.settle_seconds = float(settle_seconds)
+        self.pending = {}
 
-    def merge(self, events):
-        grouped = {}
+    def _select(self, copies):
+        first = copies[0]
+        if self.league_priority:
+            owned = [event for event in copies
+                     if self.owner_keys.get(str(event.fantasy_owner))]
+            candidates = owned or copies
+            selected = min(
+                enumerate(candidates),
+                key=lambda row: (
+                    self.priority_index.get(
+                        row[1].fantasy_league, len(self.priority_index)),
+                    row[0]))[1]
+            return replace(first, fantasy_team=selected.fantasy_team)
+        occurrences = {(event.fantasy_league, event.fantasy_team,
+                        self.owner_keys.get(str(event.fantasy_owner))) for event in copies}
+        owners = {row[2] for row in occurrences if row[2]}
+        if len(occurrences) == 1:
+            label = first.fantasy_team
+        elif len(owners) == 1 and next(iter(owners)) in self.users:
+            label = self.users[next(iter(owners))].label
+        else:
+            label = None
+        return replace(first, fantasy_team=label)
+
+    def merge(self, events, now=None):
+        now = time.monotonic() if now is None else now
         for event in events:
-            grouped.setdefault(real_play_key(event), []).append(event)
+            key = real_play_key(event)
+            if key in self.seen:
+                continue
+            entry = self.pending.setdefault(
+                key, {"deadline": now + self.settle_seconds, "copies": {}})
+            occurrence = (event.fantasy_league, event.fantasy_team,
+                          str(event.fantasy_owner))
+            entry["copies"][occurrence] = event
         output = []
-        for key, copies in grouped.items():
+        ready = [key for key, entry in self.pending.items()
+                 if now >= entry["deadline"]]
+        for key in ready:
+            entry = self.pending.pop(key)
             if key in self.seen:
                 continue
             self.seen.add(key)
-            first = copies[0]
-            if self.league_priority:
-                owned = [event for event in copies
-                         if self.owner_keys.get(str(event.fantasy_owner))]
-                candidates = owned or copies
-                selected = min(
-                    enumerate(candidates),
-                    key=lambda row: (
-                        self.priority_index.get(
-                            row[1].fantasy_league, len(self.priority_index)),
-                        row[0]))[1]
-                output.append(replace(first, fantasy_team=selected.fantasy_team))
-                continue
-            occurrences = {(event.fantasy_league, event.fantasy_team,
-                            self.owner_keys.get(str(event.fantasy_owner))) for event in copies}
-            owners = {row[2] for row in occurrences if row[2]}
-            if len(occurrences) == 1:
-                label = first.fantasy_team
-            elif len(owners) == 1 and next(iter(owners)) in self.users:
-                label = self.users[next(iter(owners))].label
-            else:
-                label = None
-            output.append(replace(first, fantasy_team=label))
+            copies = list(entry["copies"].values())
+            if copies:
+                output.append(self._select(copies))
         return output
