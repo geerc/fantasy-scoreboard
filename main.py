@@ -598,21 +598,10 @@ def main():
 
         start1, width1 = draw_compact_score(value1, color1, 12)
         start2, width2 = draw_compact_score(value2, color2, 52)
-        show_trends = show_projection and not show_win_probability
-        trend1 = team1.get("projection_trend", 0) if show_trends else 0
-        trend2 = team2.get("projection_trend", 0) if show_trends else 0
-        arrow1_x = start1 + width1 + 1
-        arrow2_x = start2 - 6
-        if trend1:
-            canvas.SetImage(projection_arrows[trend1], arrow1_x, 25, False)
-        if trend2:
-            canvas.SetImage(projection_arrows[trend2], arrow2_x, 25, False)
         if not show_win_probability and median is not None and value1 > median:
-            medal_x = arrow1_x + 6 if trend1 else start1 + width1
-            canvas.SetImage(median_medal, medal_x, 24, False)
+            canvas.SetImage(median_medal, start1 + width1, 24, False)
         if not show_win_probability and median is not None and value2 > median:
-            medal_x = arrow2_x - 8 if trend2 else start2 - 8
-            canvas.SetImage(median_medal, medal_x, 24, False)
+            canvas.SetImage(median_medal, start2 - 8, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""

@@ -33,7 +33,8 @@ The same defaults can be set with `SLEEPER_LEAGUE_ID`, `DISPLAY_WEEK`,
 Three layouts are available through the config or `--layout`: `classic`,
 `diagonal`, and `large_logos`. The `large_logos` layout omits team names, puts
 20×20 team logos in the upper corners, and draws scores beneath them. The
-tenths digit is rendered as a superscript without a decimal point.
+tenths digit is rendered as a superscript without a decimal point. Projection
+change chevrons are intentionally omitted from this compact layout.
 
 Projected scores within 10% of one another are both white by default instead
 of red and green. Adjust that margin in the board config if desired:
