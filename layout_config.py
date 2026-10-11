@@ -29,8 +29,8 @@ def resolve_layout(layout=None, config=None):
     return selected
 
 
-def resolve_close_score_threshold(config=None):
-    """Return the projected-score closeness threshold as a decimal fraction."""
+def resolve_projection_color_threshold(config=None):
+    """Return points required to register a projection color movement."""
     import math
     path = Path(config) if config is not None else DEFAULT_CONFIG
     settings = {}
@@ -39,17 +39,11 @@ def resolve_close_score_threshold(config=None):
             settings = json.load(stream)
         if not isinstance(settings, dict):
             raise ValueError("Board config must be a JSON object")
-    percent = settings.get("close_score_threshold_percent", 10)
-    if (isinstance(percent, bool) or not isinstance(percent, (int, float)) or
-            not math.isfinite(percent) or not 0 <= percent <= 100):
-        raise ValueError("close_score_threshold_percent must be from 0 to 100")
-    return float(percent) / 100
-
-
-def projected_scores_close(first, second, threshold):
-    """Return whether two projected totals are within a relative threshold."""
-    high = max(abs(float(first)), abs(float(second)))
-    return high > 0 and abs(float(first) - float(second)) / high <= threshold
+    points = settings.get("projection_color_threshold_points", 2)
+    if (isinstance(points, bool) or not isinstance(points, (int, float)) or
+            not math.isfinite(points) or points <= 0):
+        raise ValueError("projection_color_threshold_points must be positive")
+    return float(points)
 
 
 def add_touchdown_arguments(parser):

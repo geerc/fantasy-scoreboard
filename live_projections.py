@@ -38,6 +38,27 @@ def projection_trends(previous, current, tolerance=.005):
     return trends
 
 
+def projection_color_state(baselines, directions, current, threshold):
+    """Advance rolling projection baselines after significant point changes."""
+    baselines = {str(key): float(value) for key, value in baselines.items()}
+    directions = {str(key): int(value) for key, value in directions.items()}
+    for roster_id, value in current.items():
+        roster_id = str(roster_id)
+        value = float(value)
+        if roster_id not in baselines:
+            baselines[roster_id] = value
+            directions[roster_id] = 0
+            continue
+        change = value - baselines[roster_id]
+        if change >= threshold:
+            baselines[roster_id] = value
+            directions[roster_id] = 1
+        elif change <= -threshold:
+            baselines[roster_id] = value
+            directions[roster_id] = -1
+    return baselines, directions
+
+
 def get_json(url, **params):
     response = requests.get(url, params=params or None, timeout=10)
     response.raise_for_status()

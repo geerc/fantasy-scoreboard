@@ -1,6 +1,6 @@
 {
   "layout": "diagonal",
-  "close_score_threshold_percent": 10,
+  "projection_color_threshold_points": 2,
   "touchdown_duration_seconds": 10,
   "show_win_probability": true,
   "win_probability_display": "alternate",

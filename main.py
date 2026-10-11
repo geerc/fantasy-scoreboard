@@ -10,12 +10,13 @@ from sleeper_wrapper import League
 from name_scroll import NameRenderer
 from layout_config import (add_layout_arguments, resolve_layout,
                            add_touchdown_arguments, resolve_touchdown_settings,
-                           projected_scores_close, resolve_close_score_threshold,
+                           resolve_projection_color_threshold,
                            DEFAULT_CONFIG)
 from touchdowns import CelebrationQueue
 from touchdown_source import create_touchdown_monitor, create_league_touchdown_monitor
 from touchdown_animation import CelebrationRenderer
-from live_projections import LiveProjectionMonitor, league_median, projection_trends
+from live_projections import (LiveProjectionMonitor, league_median,
+                              projection_color_state, projection_trends)
 from league_adapters import create_league_adapter, selected_owner_ids
 from multi_league_config import load_multi_league_config
 from multi_league_events import CrossLeagueCelebrations
@@ -118,7 +119,7 @@ def main():
     effective_config = args.config or (DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None)
     try:
         layout = resolve_layout(args.layout, args.config)
-        close_score_threshold = resolve_close_score_threshold(args.config)
+        projection_color_threshold = resolve_projection_color_threshold(args.config)
         touchdown_duration, touchdown_poll_interval = resolve_touchdown_settings(
             args.touchdown_duration, args.touchdown_poll_interval, args.config)
         multi_config = load_multi_league_config(effective_config)
@@ -442,15 +443,12 @@ def main():
             return text
         return str(value)
 
-    def score_colors(points1, points2, show_projection=False):
-        """Use white when projected totals fall within the configured margin."""
-        if points1 == points2:
-            return white, white
-        close = (show_projection and projected_scores_close(
-            points1, points2, close_score_threshold))
-        if close:
-            return white, white
-        return ((green, red) if points1 > points2 else (red, green))
+    def score_color(team, show_projection=False, show_win_probability=False):
+        """Color only significant projection movement; probabilities stay white."""
+        if show_win_probability or not show_projection:
+            return white
+        direction = team.get("projection_color_direction", 0)
+        return green if direction > 0 else red if direction < 0 else white
 
     def draw_scores(canvas, team1, team2, show_projection=False,
                     show_win_probability=False):
@@ -498,8 +496,8 @@ def main():
             team2_x = left_x + min_sep
 
         # draw using color rules
-        color1, color2 = score_colors(
-            team1_score, team2_score, show_projection and not show_win_probability)
+        color1 = score_color(team1, show_projection, show_win_probability)
+        color2 = score_color(team2, show_projection, show_win_probability)
         draw_score_text(canvas, left_x, baseline_y, color1, s1)
         draw_score_text(canvas, team2_x, baseline_y, color2, s2)
         if show_projection and not show_win_probability:
@@ -534,8 +532,8 @@ def main():
                    team2.get("projection") if show_projection else team2["points"])
         points1 = team1["points"] if points1 is None else points1
         points2 = team2["points"] if points2 is None else points2
-        color1, color2 = score_colors(
-            points1, points2, show_projection and not show_win_probability)
+        color1 = score_color(team1, show_projection, show_win_probability)
+        color2 = score_color(team2, show_projection, show_win_probability)
         score1 = display_points(team1, show_projection, show_win_probability)
         score2 = display_points(team2, show_projection, show_win_probability)
         # Scores use a larger bold 5x7 treatment. Team 2 hugs its logo-side edge.
@@ -571,29 +569,23 @@ def main():
                   team2.get("projection") if show_projection else team2.get("points", 0))
         value1 = team1.get("points", 0) if value1 is None else value1
         value2 = team2.get("points", 0) if value2 is None else value2
-        color1, color2 = score_colors(
-            value1, value2, show_projection and not show_win_probability)
-
-        def score_parts(value):
-            numeric = round(float(value), 1)
-            whole = str(int(numeric))
-            tenth = str(int(round(abs(numeric - int(numeric)) * 10)) % 10)
-            return whole, tenth
+        color1 = score_color(team1, show_projection, show_win_probability)
+        color2 = score_color(team2, show_projection, show_win_probability)
 
         def draw_compact_score(value, color, center_x):
             if show_win_probability:
                 label = f"{float(value):.0f}%"
-                width = sum(score_font.CharacterWidth(ord(char)) for char in label) + 1
+                width = sum(score_font.CharacterWidth(ord(char)) for char in label)
                 start_x = center_x - width // 2
-                draw_score_text(canvas, start_x, 31, color, label)
+                graphics.DrawText(canvas, score_font, start_x, 31, white, label)
                 return start_x, width
-            whole, tenth = score_parts(value)
-            whole_width = sum(score_font.CharacterWidth(ord(char)) for char in whole) + 1
-            tenth_width = text_font.CharacterWidth(ord(tenth))
-            total_width = whole_width + tenth_width
+            whole, fraction = f"{float(value):.2f}".split(".")
+            whole_width = sum(score_font.CharacterWidth(ord(char)) for char in whole)
+            fraction_width = sum(text_font.CharacterWidth(ord(char)) for char in fraction)
+            total_width = whole_width + fraction_width
             start_x = center_x - total_width // 2
-            draw_score_text(canvas, start_x, 31, color, whole)
-            graphics.DrawText(canvas, text_font, start_x + whole_width, 26, color, tenth)
+            graphics.DrawText(canvas, score_font, start_x, 31, color, whole)
+            graphics.DrawText(canvas, text_font, start_x + whole_width, 26, color, fraction)
             return start_x, total_width
 
         start1, width1 = draw_compact_score(value1, color1, 12)
@@ -630,6 +622,8 @@ def main():
             projection_version = 0
             previous_projection_totals = {}
             current_projection_trends = {}
+            projection_color_baselines = {}
+            projection_color_directions = {}
             last_tick = time.monotonic()
             last_refresh_time = last_tick
             last_frame_time = last_tick - 1
@@ -648,6 +642,12 @@ def main():
                 events = monitor.events(display_week, now)
                 projection_totals, current_projection_version = projection_monitor.totals(display_week)
                 if current_projection_version != projection_version:
+                    projection_color_baselines, projection_color_directions = \
+                        projection_color_state(
+                            projection_color_baselines,
+                            projection_color_directions,
+                            projection_totals,
+                            projection_color_threshold)
                     current_projection_trends = projection_trends(
                         previous_projection_totals, projection_totals)
                     for matchup in matchup_data:
@@ -655,6 +655,8 @@ def main():
                             team["projection"] = projection_totals.get(team["roster_id"])
                             team["projection_trend"] = current_projection_trends.get(
                                 team["roster_id"], 0)
+                            team["projection_color_direction"] = \
+                                projection_color_directions.get(team["roster_id"], 0)
                     if projection_totals and win_probability_settings.enabled:
                         update_matchup_probabilities(
                             matchup_data, win_probability_settings.simulations,
@@ -694,6 +696,9 @@ def main():
                                 team["projection"] = projection_totals.get(team["roster_id"])
                                 team["projection_trend"] = current_projection_trends.get(
                                     team["roster_id"], 0)
+                                team["projection_color_direction"] = \
+                                    projection_color_directions.get(
+                                        team["roster_id"], 0)
                         if projection_totals and win_probability_settings.enabled:
                             update_matchup_probabilities(
                                 matchup_data, win_probability_settings.simulations,
@@ -705,6 +710,8 @@ def main():
                         logger.warning("Matchup refresh failed; retaining last display: %s", error)
                     if previous_week != display_week:
                         celebrations = CelebrationQueue(touchdown_duration)
+                        projection_color_baselines = {}
+                        projection_color_directions = {}
                         rotation_elapsed = 0
                     last_refresh_time = time.monotonic()
 
@@ -759,6 +766,8 @@ def main():
                 runtime = {"config": league_config, "adapter": adapter,
                            "owners": owners, "matchups": [], "projections": {},
                            "projection_trends": {}, "uncertainties": {},
+                           "projection_color_baselines": {},
+                           "projection_color_directions": {},
                            "median_enabled": False}
                 monitor = create_league_touchdown_monitor(
                     league_config, settings.credentials, display_week,
@@ -780,6 +789,11 @@ def main():
                                      runtime["owners"], config.key)
                 if config.platform == "espn":
                     runtime["projections"] = dict(runtime["adapter"].projections)
+                    (runtime["projection_color_baselines"],
+                     runtime["projection_color_directions"]) = projection_color_state(
+                        runtime["projection_color_baselines"],
+                        runtime["projection_color_directions"],
+                        runtime["projections"], projection_color_threshold)
                     runtime["projection_trends"] = projection_trends(
                         previous, runtime["projections"])
                 for matchup in rows:
@@ -789,6 +803,8 @@ def main():
                             team["projection"] = projected
                         team["projection_trend"] = runtime["projection_trends"].get(
                             team["roster_id"], 0)
+                        team["projection_color_direction"] = runtime[
+                            "projection_color_directions"].get(team["roster_id"], 0)
                 if runtime["projections"] and win_probability_settings.enabled:
                     update_matchup_probabilities(
                         rows, win_probability_settings.simulations,
@@ -851,6 +867,12 @@ def main():
                         runtime["uncertainties"] = projection.uncertainties
                         runtime["median_enabled"] = projection.median_enabled
                         if version != runtime["projection_version"]:
+                            (runtime["projection_color_baselines"],
+                             runtime["projection_color_directions"]) = \
+                                projection_color_state(
+                                    runtime["projection_color_baselines"],
+                                    runtime["projection_color_directions"], totals,
+                                    projection_color_threshold)
                             runtime["projection_trends"] = projection_trends(
                                 runtime["projections"], totals)
                             runtime["projection_version"] = version
@@ -860,6 +882,9 @@ def main():
                                     team["projection"] = totals.get(team["roster_id"])
                                     team["projection_trend"] = runtime[
                                         "projection_trends"].get(team["roster_id"], 0)
+                                    team["projection_color_direction"] = runtime[
+                                        "projection_color_directions"].get(
+                                            team["roster_id"], 0)
                             if totals and win_probability_settings.enabled:
                                 update_matchup_probabilities(
                                     runtime["matchups"],
@@ -881,7 +906,12 @@ def main():
                 if now - last_refresh >= data_refresh_interval:
                     if week_is_dynamic:
                         try:
+                            previous_week = display_week
                             display_week, season_type = get_current_nfl_state()
+                            if display_week != previous_week:
+                                for runtime in runtimes:
+                                    runtime["projection_color_baselines"] = {}
+                                    runtime["projection_color_directions"] = {}
                         except (requests.RequestException, ValueError) as error:
                             logger.warning("Could not refresh NFL state: %s", error)
                     for runtime in runtimes:

@@ -36,11 +36,14 @@ Three layouts are available through the config or `--layout`: `classic`,
 tenths digit is rendered as a superscript without a decimal point. Projection
 change chevrons are intentionally omitted from this compact layout.
 
-Projected scores within 10% of one another are both white by default instead
-of red and green. Adjust that margin in the board config if desired:
+Projected scores are white until their rolling projection moves by a configured
+number of points. A significant increase turns that team's score green; a
+significant decrease turns it red. Small changes accumulate against the last
+baseline, and crossing the threshold resets the baseline. Win probabilities
+are always white. Configure the threshold in points:
 
 ```json
-"close_score_threshold_percent": 10
+"projection_color_threshold_points": 2
 ```
 
 ## Multiple Sleeper and ESPN leagues

@@ -7,7 +7,8 @@ from PIL import Image
 
 from live_projections import (calculate_team_outlooks, calculate_team_projections, clock_seconds,
                               league_median, projected_final, projection_field,
-                              projection_trends, remaining_fraction)
+                              projection_color_state, projection_trends,
+                              remaining_fraction)
 from main import decode_logo, open_logo_or_default, user_avatar_url
 
 
@@ -22,6 +23,19 @@ class LiveProjectionTests(unittest.TestCase):
             {"1": 100, "2": 110, "3": 90},
             {"1": 101.5, "2": 108, "3": 90, "4": 120}),
             {"1": 1, "2": -1, "3": 0, "4": 0})
+
+    def test_projection_colors_accumulate_and_reset_rolling_baseline(self):
+        baselines, directions = projection_color_state({}, {}, {"1": 100}, 2)
+        self.assertEqual((baselines, directions), ({"1": 100}, {"1": 0}))
+        baselines, directions = projection_color_state(
+            baselines, directions, {"1": 101.25}, 2)
+        self.assertEqual((baselines, directions), ({"1": 100}, {"1": 0}))
+        baselines, directions = projection_color_state(
+            baselines, directions, {"1": 102.1}, 2)
+        self.assertEqual((baselines, directions), ({"1": 102.1}, {"1": 1}))
+        baselines, directions = projection_color_state(
+            baselines, directions, {"1": 100}, 2)
+        self.assertEqual((baselines, directions), ({"1": 100}, {"1": -1}))
 
     def test_avatar_url_prefers_custom_logo_then_standard_avatar(self):
         self.assertEqual(user_avatar_url({
