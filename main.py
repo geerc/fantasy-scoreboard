@@ -588,12 +588,19 @@ def main():
             graphics.DrawText(canvas, text_font, start_x + whole_width, 26, color, fraction)
             return start_x, total_width
 
-        start1, width1 = draw_compact_score(value1, color1, 12)
-        start2, width2 = draw_compact_score(value2, color2, 52)
-        if not show_win_probability and median is not None and value1 > median:
-            canvas.SetImage(median_medal, start1 + width1, 24, False)
-        if not show_win_probability and median is not None and value2 > median:
-            canvas.SetImage(median_medal, start2 - 8, 24, False)
+        median_enabled = median is not None
+        # Median-enabled leagues permanently reserve the rightmost eight pixels
+        # of each 32-pixel team half, whether or not that team earned the medal.
+        center1 = 12
+        center2 = 44 if median_enabled else 52
+        draw_compact_score(value1, color1, center1)
+        draw_compact_score(value2, color2, center2)
+        if median_enabled and team1.get("projection") is not None and \
+                team1["projection"] > median:
+            canvas.SetImage(median_medal, 24, 24, False)
+        if median_enabled and team2.get("projection") is not None and \
+                team2["projection"] > median:
+            canvas.SetImage(median_medal, 56, 24, False)
 
     def display_scores(canvas, display_league):
         """Render complete frames; queue TD interrupts without advancing rotation."""

@@ -131,6 +131,23 @@ class LayoutTests(unittest.TestCase):
         self.assertFalse(any(args[5] in ("Purple Reign", "Gridiron Gurus")
                              for args in rendered))
 
+    def test_large_logo_median_slot_is_fixed_on_score_right(self):
+        replay = test_scoreboard_replay.ReplayTests()
+        replay.setUp()
+        fixture = deepcopy(replay.fixture)
+        fixture["league_average_match"] = True
+        graphics, matrix = replay.render_headless(
+            fixture, layout="large_logos", rotation_interval=1000)
+        positions = [call.args[1:3]
+                     for call in matrix.CreateFrameCanvas.return_value.SetImage.call_args_list]
+        self.assertTrue(any(position in ((24, 24), (56, 24))
+                            for position in positions))
+        score_calls = [call.args for call in graphics.DrawText.call_args_list
+                       if call.args[3] == 31]
+        # Team 2's fixed score area is centered at x=44, leaving x=56..63
+        # reserved for its medal even on frames where no medal is drawn.
+        self.assertTrue(any(args[2] < 44 for args in score_calls))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,9 @@ Three layouts are available through the config or `--layout`: `classic`,
 20×20 team logos in the upper corners, and draws scores beneath them. The
 tenths digit is rendered as a superscript without a decimal point. Projection
 change chevrons are intentionally omitted from this compact layout.
+For median-enabled leagues, each team half permanently reserves its rightmost
+eight pixels for the median medal. Scores retain the same position whether the
+current team has earned the medal or not.
 
 Projected scores are white until their rolling projection moves by a configured
 number of points. A significant increase turns that team's score green; a
