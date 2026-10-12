@@ -34,8 +34,9 @@ Three layouts are available through the config or `--layout`: `classic`,
 `diagonal`, and `large_logos`. The `large_logos` layout omits team names, puts
 19×19 team logos in the upper corners with a gap above the scores, and draws
 the score in a bold, block-style scoreboard treatment. The hundredths are
-rendered as a bold superscript without a decimal point. Projection change
-chevrons are intentionally omitted from this compact layout.
+rendered as a superscript without a decimal point. The block font retains a
+blank pixel column between digits so adjacent vertical strokes remain distinct.
+Projection change chevrons are intentionally omitted from this compact layout.
 Win probability is horizontally aligned with each logo's center and vertically
 centered in the open band beneath it.
 For median-enabled leagues, each earned medal appears directly beneath that

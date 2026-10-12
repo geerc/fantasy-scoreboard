@@ -579,22 +579,19 @@ def main():
             if show_win_probability:
                 label = f"{float(value):.0f}%"
                 width = sum(
-                    large_score_font.CharacterWidth(ord(char)) for char in label) + 1
+                    large_score_font.CharacterWidth(ord(char)) for char in label)
                 start_x = center_x - width // 2
                 # Center the seven-pixel face in the 12-pixel band below the logos.
                 graphics.DrawText(canvas, large_score_font, start_x, 29, color, label)
-                graphics.DrawText(canvas, large_score_font, start_x + 1, 29, color, label)
                 return None
             whole, fraction = f"{float(value):.2f}".split(".")
             whole_width = sum(large_score_font.CharacterWidth(ord(char)) for char in whole)
             fraction_width = sum(text_font.CharacterWidth(ord(char)) for char in fraction)
-            total_width = whole_width + fraction_width + 1
+            total_width = whole_width + fraction_width
             start_x = center_x - total_width // 2
             fraction_x = start_x + whole_width
             graphics.DrawText(canvas, large_score_font, start_x, 31, color, whole)
-            graphics.DrawText(canvas, large_score_font, start_x + 1, 31, color, whole)
             graphics.DrawText(canvas, text_font, fraction_x, 26, color, fraction)
-            graphics.DrawText(canvas, text_font, fraction_x + 1, 26, color, fraction)
             return fraction_x
 
         median_enabled = median is not None

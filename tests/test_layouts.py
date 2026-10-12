@@ -128,10 +128,8 @@ class LayoutTests(unittest.TestCase):
         rendered = [call.args for call in graphics.DrawText.call_args_list]
         whole_calls = [args for args in rendered if args[5] == "148" and args[3] == 31]
         fraction_calls = [args for args in rendered if args[5] == "70" and args[3] == 26]
-        self.assertGreaterEqual(len(whole_calls), 2)
-        self.assertEqual(whole_calls[1][2], whole_calls[0][2] + 1)
-        self.assertGreaterEqual(len(fraction_calls), 2)
-        self.assertEqual(fraction_calls[1][2], fraction_calls[0][2] + 1)
+        self.assertTrue(whole_calls)
+        self.assertTrue(fraction_calls)
         graphics.Font.return_value.LoadFont.assert_any_call("fonts/scoreboard-5x7.bdf")
         self.assertFalse(any(args[5] in ("Purple Reign", "Gridiron Gurus")
                              for args in rendered))
@@ -185,16 +183,13 @@ class LayoutTests(unittest.TestCase):
             if call.args[5].endswith("%")]
         self.assertTrue(probability_calls)
         self.assertTrue(all(args[3] == 29 for args in probability_calls))
-        self.assertEqual(len(probability_calls) % 2, 0)
-        left, left_bold, right, right_bold = probability_calls[:4]
-        self.assertEqual(left_bold[2], left[2] + 1)
-        self.assertEqual(right_bold[2], right[2] + 1)
+        left, right = probability_calls[:2]
         left_width = sum(
             graphics.Font.return_value.CharacterWidth(ord(char))
-            for char in left[5]) + 1
+            for char in left[5])
         right_width = sum(
             graphics.Font.return_value.CharacterWidth(ord(char))
-            for char in right[5]) + 1
+            for char in right[5])
         self.assertEqual(left[2], 11 - left_width // 2)
         self.assertEqual(right[2], 52 - right_width // 2)
 
